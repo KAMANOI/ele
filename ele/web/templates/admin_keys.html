@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Admin — Keys &amp; Codes{% endblock %}
+
+{% block content %}
+
+<div class="hero">
+  <h1>Admin — Keys &amp; Codes</h1>
+</div>
+
+<!-- ── Ambassador keys ───────────────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-title">Ambassador Keys</div>
+  {% if keys %}
+  <table class="ledger-table">
+    <thead>
+      <tr>
+        <th>Key</th>
+        <th>Label</th>
+        <th>Status</th>
+        <th>Redeemed by</th>
+        <th>Created</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for k in keys %}
+      <tr>
+        <td><code>{{ k.key_value }}</code></td>
+        <td>{{ k.label or "—" }}</td>
+        <td>{% if k.is_active %}<span style="color:var(--success);">active</span>{% else %}<span style="color:var(--text-2);">inactive</span>{% endif %}</td>
+        <td>{% if k.redeemed_by_user_id %}user #{{ k.redeemed_by_user_id }}{% else %}—{% endif %}</td>
+        <td class="ledger-date">{{ k.created_at.strftime("%Y-%m-%d") if k.created_at else "—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:var(--text-2);">No ambassador keys yet.</p>
+  {% endif %}
+  <p style="font-size:12px; color:var(--text-2); margin-top:14px;">
+    Create keys via CLI: <code>ele-admin create-ambassador-key --label "name"</code>
+  </p>
+</div>
+
+<!-- ── Discount codes ─────────────────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-title">Discount Codes</div>
+  {% if codes %}
+  <table class="ledger-table">
+    <thead>
+      <tr>
+        <th>Code</th>
+        <th>% Off</th>
+        <th>Status</th>
+        <th>Uses</th>
+        <th>Expires</th>
+        <th>Created</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for dc in codes %}
+      <tr>
+        <td><code>{{ dc.code }}</code></td>
+        <td>{{ dc.percent_off }}%</td>
+        <td>{% if dc.is_active %}<span style="color:var(--success);">active</span>{% else %}<span style="color:var(--text-2);">inactive</span>{% endif %}</td>
+        <td>{{ dc.current_uses }} / {% if dc.max_uses %}{{ dc.max_uses }}{% else %}∞{% endif %}</td>
+        <td>{{ dc.expires_at.strftime("%Y-%m-%d") if dc.expires_at else "never" }}</td>
+        <td class="ledger-date">{{ dc.created_at.strftime("%Y-%m-%d") if dc.created_at else "—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:var(--text-2);">No discount codes yet.</p>
+  {% endif %}
+  <p style="font-size:12px; color:var(--text-2); margin-top:14px;">
+    Create codes via CLI: <code>ele-admin create-discount-code --code MAG-ELE20 --percent 20 --max-uses 500</code>
+  </p>
+</div>
+
+{% endblock %}

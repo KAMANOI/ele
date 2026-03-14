@@ -1,0 +1,36 @@
+{
+  "job_id": "caf91275bba749",
+  "original_filename": "big.jpg",
+  "mode": "creator",
+  "flow": "quick",
+  "upload_path": "/Users/kamanoihiroshiki/projects/ele/storage/uploads/caf91275bba749.jpg",
+  "output_path": "/Users/kamanoihiroshiki/projects/ele/storage/outputs/caf91275bba749.tiff",
+  "preview_original": "/previews/caf91275bba749_original.jpg",
+  "preview_processed": "/previews/caf91275bba749_processed.jpg",
+  "report": {
+    "compression_score": 0.013,
+    "clipping_score": 0.0461,
+    "sharpness_score": 1.0,
+    "noise_score": 1.0,
+    "dynamic_range_score": 0.6373,
+    "notes": [
+      "highlight clipping detected (0.7% of pixels)",
+      "shadow clipping detected (8.5% of pixels)"
+    ]
+  },
+  "metadata": {
+    "mode": "creator",
+    "input": "/Users/kamanoihiroshiki/projects/ele/storage/uploads/caf91275bba749.jpg",
+    "export_size": "3000\u00d72000",
+    "compression_score": "0.013041198253631592",
+    "clipping_score": "0.04613291666666667",
+    "sharpness_score": "1.0",
+    "noise_score": "1.0",
+    "dynamic_range_score": "0.6372961196791204"
+  },
+  "export_target": null,
+  "print_scale": null,
+  "status": "ready",
+  "error": null,
+  "created_at": "2026-03-12T00:47:41.430165+00:00"
+}

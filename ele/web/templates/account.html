@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Account — ele{% endblock %}
+
+{% block content %}
+
+<div class="hero">
+  <h1>Account</h1>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-info">{{ success }}</div>
+{% endif %}
+
+
+<!-- ── Plan & Access ──────────────────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-title">Plan &amp; Access</div>
+
+  <div class="meta-grid" style="margin-bottom:24px;">
+    <div class="meta-item">
+      <span class="meta-key">Email</span>
+      <span class="meta-val">{{ user.email }}</span>
+    </div>
+
+    <div class="meta-item">
+      <span class="meta-key">Plan</span>
+      <span class="meta-val">
+        {% if user.plan_type == "ambassador" %}
+          <span style="color:#c4b5fd; font-weight:600;">Ambassador</span>
+        {% elif user.plan_type == "pro" %}
+          <span style="color:var(--accent); font-weight:600;">Pro Monthly</span>
+        {% elif user.plan_type == "creator" %}
+          <span style="color:var(--text); font-weight:600;">Creator</span>
+        {% else %}
+          <span style="color:#5a6270;">No active plan &mdash; <a href="/pricing">choose a plan</a></span>
+        {% endif %}
+      </span>
+    </div>
+
+    {% if user.plan_type == "creator" %}
+    <div class="meta-item">
+      <span class="meta-key">Credits remaining</span>
+      <span class="meta-val" style="font-size:20px; color:var(--text);">{{ user.credits }}</span>
+    </div>
+    {% endif %}
+
+    {% if user.plan_type == "pro" %}
+    <div class="meta-item">
+      <span class="meta-key">Subscription status</span>
+      <span class="meta-val">{{ user.subscription_status or "—" }}</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-key">Exports</span>
+      <span class="meta-val" style="color:var(--success); font-weight:600;">Unlimited exports active</span>
+    </div>
+    {% endif %}
+
+    {% if user.plan_type == "ambassador" %}
+    <div class="meta-item">
+      <span class="meta-key">Exports</span>
+      <span class="meta-val" style="color:#c4b5fd; font-weight:600;">Ambassador access active</span>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="btn-row">
+    {% if user.plan_type in ("none", "creator") %}
+    <a href="/pricing" class="btn btn-primary">Buy Credits</a>
+    <a href="/pricing" class="btn btn-secondary">Upgrade to Pro</a>
+    {% endif %}
+    {% if user.plan_type == "pro" %}
+    <a href="/pricing" class="btn btn-secondary">Manage plan</a>
+    {% endif %}
+  </div>
+</div>
+
+
+<!-- ── Redeem Ambassador Key ──────────────────────────────────────────────── -->
+{% if user.plan_type != "ambassador" %}
+<div class="card">
+  <div class="card-title">Redeem Ambassador Key</div>
+  <p style="font-size:14px; color:var(--text-2); margin-bottom:16px;">
+    Enter an Ambassador key to activate unlimited free access.
+    Each key can only be redeemed once.
+  </p>
+  <form action="/redeem-ambassador-key" method="post" style="display:flex; gap:10px; flex-wrap:wrap;">
+    <input type="text" name="key_value" placeholder="AMB-XXXXXXXXXXXXXXXXXXXX"
+           class="text-input" style="flex:1; min-width:200px;" required>
+    <button type="submit" class="btn btn-secondary">Redeem Ambassador Key</button>
+  </form>
+</div>
+{% endif %}
+
+
+<!-- ── Recent Transactions ────────────────────────────────────────────────── -->
+{% if ledger %}
+<div class="card">
+  <div class="card-title">Recent Transactions</div>
+  <table class="ledger-table">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Reason</th>
+        <th class="ledger-delta">Credits</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in ledger %}
+      <tr>
+        <td class="ledger-date">{{ entry.created_at.strftime("%Y-%m-%d %H:%M") if entry.created_at else "—" }}</td>
+        <td>{{ entry.reason | replace("_", " ") | title }}</td>
+        <td class="ledger-delta {% if entry.delta > 0 %}ledger-positive{% else %}ledger-negative{% endif %}">
+          {% if entry.delta > 0 %}+{% endif %}{{ entry.delta }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% endblock %}

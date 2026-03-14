@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}Preview — ele{% endblock %}
+
+{% block content %}
+
+<div class="hero">
+  <h1>Preview &amp; Target Export</h1>
+  <p class="lead">
+    Review the pseudo-RAW reconstruction, then choose your export target.
+  </p>
+</div>
+
+{% if export_error %}
+<div class="alert alert-warn">{{ export_error }}</div>
+{% endif %}
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text">Exporting&hellip;</div>
+  <div class="loading-sub">Applying export target settings.</div>
+</div>
+
+<!-- ── Side-by-side preview ────────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-title">Image Comparison</div>
+
+  <div class="preview-grid">
+    <div class="preview-panel">
+      <div class="preview-panel-head">
+        Original
+        <span>{{ state.original_filename }}</span>
+      </div>
+      {% if state.preview_original %}
+        <img src="{{ state.preview_original }}" alt="Original preview"
+             loading="lazy">
+      {% else %}
+        <div class="no-preview">Preview unavailable</div>
+      {% endif %}
+    </div>
+
+    <div class="preview-panel">
+      <div class="preview-panel-head">
+        ele master
+        <span>mode: {{ state.mode }}</span>
+      </div>
+      {% if state.preview_processed %}
+        <img src="{{ state.preview_processed }}" alt="Processed preview"
+             loading="lazy">
+      {% else %}
+        <div class="no-preview">Preview unavailable</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="alert alert-info" style="font-size:13px; margin-bottom:16px">
+    The ele preview is intentionally flatter than the original.
+    Highlights, shadows, and white balance are left open for your editor.
+    The downloaded master is a 16-bit TIFF — not this preview JPEG.
+  </div>
+
+  <div style="font-size:12px; color:#888; display:flex; gap:24px; flex-wrap:wrap;">
+    {% if state.input_size %}
+    <span><strong style="color:#aaa">Input</strong> {{ state.input_size }} px</span>
+    {% endif %}
+    {% if state.export_size %}
+    <span><strong style="color:#aaa">Export (TIFF)</strong> {{ state.export_size }} px</span>
+    {% endif %}
+    <span><strong style="color:#aaa">Preview (JPEG)</strong> ≤ 1200 px long edge</span>
+  </div>
+</div>
+
+<!-- ── Degradation report ─────────────────────────────────────────────── -->
+{% if report_rows %}
+<div class="card">
+  <div class="card-title">Degradation Report</div>
+  <div class="report-list">
+    {% for row in report_rows %}
+    <div class="report-row">
+      <div class="report-row-head">
+        <span class="report-row-label">{{ row.label }}</span>
+        <span class="report-row-val">{{ row.value }}</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:{{ row.pct }}%"></div>
+      </div>
+      <div class="report-hint">{{ row.hint }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if state.report and state.report.notes %}
+  <ul class="notes">
+    {% for note in state.report.notes %}
+    <li>{{ note }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- ── Export target ──────────────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-title">Choose Export Target</div>
+
+  <form id="export-form" action="/export/{{ job_id }}" method="post"
+        onsubmit="return onExportSubmit()">
+
+    <div class="target-grid" id="target-grid">
+
+      <label class="radio-card target-card" id="target-lightroom">
+        <input type="radio" name="target" value="lightroom" checked
+               onchange="onTargetChange(this)">
+        <span class="target-icon">💡</span>
+        <span class="target-text">
+          <strong>Lightroom</strong>
+          <small>16-bit TIFF &middot; ProPhoto RGB</small>
+        </span>
+      </label>
+
+      <label class="radio-card target-card" id="target-photoshop">
+        <input type="radio" name="target" value="photoshop"
+               onchange="onTargetChange(this)">
+        <span class="target-icon">🖌</span>
+        <span class="target-text">
+          <strong>Photoshop</strong>
+          <small>16-bit TIFF &middot; ProPhoto RGB</small>
+        </span>
+      </label>
+
+      <label class="radio-card target-card" id="target-captureone">
+        <input type="radio" name="target" value="captureone"
+               onchange="onTargetChange(this)">
+        <span class="target-icon">📷</span>
+        <span class="target-text">
+          <strong>Capture One</strong>
+          <small>16-bit TIFF &middot; ProPhoto RGB</small>
+        </span>
+      </label>
+
+      <label class="radio-card target-card" id="target-print">
+        <input type="radio" name="target" value="print"
+               onchange="onTargetChange(this)">
+        <span class="target-icon">🖨</span>
+        <span class="target-text">
+          <strong>Print TIFF</strong>
+          <small>Super resolution &middot; Natural / AI Detail &middot; ×2 / ×4 / ×6</small>
+        </span>
+      </label>
+
+    </div>
+
+    <!-- Adobe DNG notice (always visible, not a radio option) -->
+    <div class="alert alert-info" id="dng-notice" style="font-size:13px; margin-bottom:18px">
+      <strong>Adobe DNG</strong> — Linear DNG export is planned for the next release.
+      For Adobe tools, use the Lightroom or Photoshop target (16-bit TIFF).
+    </div>
+
+    <!-- Print options (shown when target=print) -->
+    <div class="field-group" id="print-scale-group" style="display:none">
+      <label class="field-label">Upscale Style</label>
+      <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+          <input type="radio" name="print_style" value="natural" checked>
+          <span>
+            <strong>Natural Print</strong>
+            <small style="display:block; color:#888; font-size:11px;">
+              Photography-first · low-artifact · print-safe
+            </small>
+          </span>
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+          <input type="radio" name="print_style" value="ai-detail">
+          <span>
+            <strong>AI Detail Print</strong>
+            <small style="display:block; color:#888; font-size:11px;">
+              Stronger detail · may look synthetic on photos · enhanced interpolation
+            </small>
+          </span>
+        </label>
+      </div>
+      <label class="field-label">Print Scale</label>
+      <select name="print_scale">
+        {% for s in scales %}
+        <option value="{{ s }}">&times;{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="btn-row">
+      <button type="submit" class="btn btn-primary btn-lg" id="export-btn">
+        Export &amp; Download
+      </button>
+      <a href="/" class="btn btn-secondary">Upload another</a>
+    </div>
+
+  </form>
+</div>
+
+<script>
+function onTargetChange(radio) {
+  document.querySelectorAll('.target-card').forEach(c => c.classList.remove('checked'));
+  radio.closest('.target-card').classList.add('checked');
+  document.getElementById('print-scale-group').style.display =
+    radio.value === 'print' ? 'block' : 'none';
+}
+
+// Mark Lightroom as checked by default
+document.getElementById('target-lightroom').classList.add('checked');
+
+function onExportSubmit() {
+  document.getElementById('loading').classList.add('active');
+  return true;
+}
+</script>
+
+{% endblock %}

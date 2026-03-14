@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Purchase complete — ele{% endblock %}
+
+{% block content %}
+
+<div class="auth-wrap">
+  <div class="auth-card" style="text-align:center;">
+    <div class="result-check" style="margin: 0 auto 18px;">✓</div>
+    <h1 class="auth-title">Purchase complete</h1>
+
+    {% if user %}
+      {% if user.plan_type == "pro" %}
+      <p style="font-size:15px; color:var(--text-2); margin-bottom:20px;">
+        Your Pro subscription is active.
+        Unlimited exports are now enabled on your account.
+      </p>
+      {% elif user.plan_type == "creator" %}
+      <p style="font-size:15px; color:var(--text-2); margin-bottom:20px;">
+        Credits added to your account.
+        You now have <strong>{{ user.credits }} credits</strong>.
+      </p>
+      {% else %}
+      <p style="font-size:15px; color:var(--text-2); margin-bottom:20px;">
+        Your purchase is being processed.
+        Credits or plan status will update shortly.
+      </p>
+      {% endif %}
+    {% endif %}
+
+    <div class="btn-row" style="justify-content:center;">
+      <a href="/account" class="btn btn-primary">View account</a>
+      <a href="/" class="btn btn-secondary">Upload an image</a>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

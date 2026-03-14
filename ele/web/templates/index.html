@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Upload — ele{% endblock %}
+
+{% block content %}
+
+<div class="hero">
+  <h1>Turn JPEG and AI images into editable photo masters.</h1>
+  <p class="lead">
+    Prepare images for Lightroom, Photoshop, and Capture One.
+    ele is a preprocessing engine, not an editor &mdash;
+    it outputs 16-bit TIFF pseudo-RAW masters with full tonal latitude.
+  </p>
+</div>
+
+{% if not user %}
+<div class="alert alert-info" style="font-size:14px;">
+  Exports require an account with Creator credits, Pro, or an Ambassador key.
+  <a href="/signup">Sign up</a> or <a href="/login">log in</a> to export.
+</div>
+{% endif %}
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text">Processing image&hellip;</div>
+  <div class="loading-sub">This may take a moment for large files.</div>
+</div>
+
+<form id="upload-form" action="/upload" method="post" enctype="multipart/form-data"
+      onsubmit="showLoading()">
+
+  <!-- ── File upload ────────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-title">Image</div>
+
+    <div class="dropzone" id="dropzone">
+      <input type="file" name="file" id="file-input"
+             accept=".jpg,.jpeg,.png,.tif,.tiff" required
+             onchange="onFileChange(this)">
+      <span class="drop-icon">⬆</span>
+      <div class="drop-text">Drop image here or click to browse</div>
+      <div class="drop-hint">JPEG &middot; PNG &middot; TIFF</div>
+      <div class="file-chosen" id="file-chosen" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- ── Processing mode ───────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-title">Processing Mode</div>
+
+    <div class="radio-grid" id="mode-grid">
+      <label class="radio-card" id="mode-free">
+        <input type="radio" name="mode" value="free" onchange="onModeChange(this)">
+        <strong>Free</strong>
+        <small>Basic pipeline &middot; 4 000 px max</small>
+      </label>
+      <label class="radio-card checked" id="mode-creator">
+        <input type="radio" name="mode" value="creator" checked onchange="onModeChange(this)">
+        <strong>Creator</strong>
+        <small>Full restoration &middot; 8 000 px max</small>
+      </label>
+      <label class="radio-card" id="mode-pro">
+        <input type="radio" name="mode" value="pro" onchange="onModeChange(this)">
+        <strong>Pro</strong>
+        <small>Creator pipeline &middot; TIFF output</small>
+      </label>
+      <label class="radio-card" id="mode-print">
+        <input type="radio" name="mode" value="print" onchange="onModeChange(this)">
+        <strong>Print</strong>
+        <small>Super resolution &middot; ×2 / ×4 / ×6</small>
+      </label>
+    </div>
+
+    <!-- Print scale (shown only for print mode) -->
+    <div class="field-group" id="print-scale-group" style="display:none; margin-top:18px">
+      <label class="field-label">Print Scale</label>
+      <select name="print_scale">
+        <option value="2">&times;2 &mdash; double resolution</option>
+        <option value="4">&times;4 &mdash; large format</option>
+        <option value="6">&times;6 &mdash; billboard / fine art</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- ── Export flow ────────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-title">Export Flow</div>
+
+    <div class="radio-grid">
+      <label class="radio-card checked" id="flow-quick">
+        <input type="radio" name="flow" value="quick" checked onchange="onFlowChange(this)">
+        <strong>Quick Export</strong>
+        <small>Process and download immediately</small>
+      </label>
+      <label class="radio-card" id="flow-preview">
+        <input type="radio" name="flow" value="preview" onchange="onFlowChange(this)">
+        <strong>Preview &amp; Target Export</strong>
+        <small>Compare results, choose output target</small>
+      </label>
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-primary btn-lg">Process Image</button>
+
+</form>
+
+<script>
+function onFileChange(input) {
+  const chosen = document.getElementById('file-chosen');
+  if (input.files && input.files[0]) {
+    chosen.textContent = '✓ ' + input.files[0].name;
+    chosen.style.display = 'block';
+  }
+}
+
+function onModeChange(radio) {
+  document.querySelectorAll('.radio-card').forEach(c => {
+    if (c.querySelector('input[name="mode"]')) c.classList.remove('checked');
+  });
+  radio.closest('.radio-card').classList.add('checked');
+  document.getElementById('print-scale-group').style.display =
+    radio.value === 'print' ? 'block' : 'none';
+}
+
+function onFlowChange(radio) {
+  document.querySelectorAll('.radio-card').forEach(c => {
+    if (c.querySelector('input[name="flow"]')) c.classList.remove('checked');
+  });
+  radio.closest('.radio-card').classList.add('checked');
+}
+
+function showLoading() {
+  document.getElementById('loading').classList.add('active');
+}
+
+// Drag-and-drop styling
+const dz = document.getElementById('dropzone');
+dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', ()  => dz.classList.remove('drag-over'));
+dz.addEventListener('drop',      e => {
+  e.preventDefault();
+  dz.classList.remove('drag-over');
+  const fi = document.getElementById('file-input');
+  fi.files = e.dataTransfer.files;
+  onFileChange(fi);
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}Pricing — ele{% endblock %}
+
+{% block content %}
+
+<div class="hero">
+  <h1>Pricing</h1>
+  <p class="lead">
+    Pay only when you export. No subscription required for Creator Credits.
+  </p>
+</div>
+
+{% if request.query_params.get("warn") == "no_plan" %}
+<div class="alert alert-warn">
+  Exports require Creator Credits, Pro Monthly, or an Ambassador key.
+  Choose an option below to continue.
+</div>
+{% endif %}
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if not user %}
+<div class="alert alert-info">
+  <a href="/signup">Create an account</a> or <a href="/login">log in</a> to purchase.
+</div>
+{% endif %}
+
+
+<!-- ── Creator Credits ────────────────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-title">Creator Credits</div>
+
+  <p style="font-size:14px; color:var(--text-2); margin-bottom:22px;">
+    Pay only when you export. Standard exports cost <strong style="color:var(--text);">1 credit</strong>.
+    Print exports (super-resolution) cost <strong style="color:var(--text);">3 credits</strong>.
+    Credits do not expire.
+  </p>
+
+  <div class="pack-grid">
+
+    <!-- 10 credits -->
+    <div class="pack-card">
+      <div class="pack-price">¥500</div>
+      <div class="pack-amount">10 exports</div>
+      <div class="pack-desc">Try it out</div>
+      {% if user and prices.creator_10 %}
+      <form action="/billing/create-checkout-session" method="post">
+        <input type="hidden" name="checkout_type" value="creator_pack">
+        <input type="hidden" name="price_id" value="{{ prices.creator_10 }}">
+        <div class="pack-discount-row">
+          <input type="text" name="discount_code" placeholder="Discount code" class="text-input text-input-sm">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;">Buy Credits</button>
+      </form>
+      {% elif user %}
+      <p class="pack-unavail">Not configured</p>
+      {% else %}
+      <a href="/signup" class="btn btn-secondary" style="width:100%; justify-content:center;">Sign up to buy</a>
+      {% endif %}
+    </div>
+
+    <!-- 50 credits -->
+    <div class="pack-card pack-card-featured">
+      <div class="pack-badge">Popular</div>
+      <div class="pack-price">¥2,000</div>
+      <div class="pack-amount">50 exports</div>
+      <div class="pack-desc">Standard use</div>
+      {% if user and prices.creator_50 %}
+      <form action="/billing/create-checkout-session" method="post">
+        <input type="hidden" name="checkout_type" value="creator_pack">
+        <input type="hidden" name="price_id" value="{{ prices.creator_50 }}">
+        <div class="pack-discount-row">
+          <input type="text" name="discount_code" placeholder="Discount code" class="text-input text-input-sm">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;">Buy Credits</button>
+      </form>
+      {% elif user %}
+      <p class="pack-unavail">Not configured</p>
+      {% else %}
+      <a href="/signup" class="btn btn-secondary" style="width:100%; justify-content:center;">Sign up to buy</a>
+      {% endif %}
+    </div>
+
+    <!-- 200 credits -->
+    <div class="pack-card">
+      <div class="pack-price">¥6,000</div>
+      <div class="pack-amount">200 exports</div>
+      <div class="pack-desc">High volume</div>
+      {% if user and prices.creator_200 %}
+      <form action="/billing/create-checkout-session" method="post">
+        <input type="hidden" name="checkout_type" value="creator_pack">
+        <input type="hidden" name="price_id" value="{{ prices.creator_200 }}">
+        <div class="pack-discount-row">
+          <input type="text" name="discount_code" placeholder="Discount code" class="text-input text-input-sm">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;">Buy Credits</button>
+      </form>
+      {% elif user %}
+      <p class="pack-unavail">Not configured</p>
+      {% else %}
+      <a href="/signup" class="btn btn-secondary" style="width:100%; justify-content:center;">Sign up to buy</a>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ── Pro Monthly ────────────────────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-title">Pro Monthly</div>
+
+  <p style="font-size:14px; color:var(--text-2); margin-bottom:22px;">
+    Unlimited exports for photographers and heavy users.
+    Cancel anytime.
+  </p>
+
+  <div class="pro-row">
+    <div class="pro-details">
+      <div class="pro-price">¥1,200 <span class="pro-price-sub">/ month</span></div>
+      <ul class="pro-features">
+        <li>Unlimited standard exports</li>
+        <li>Unlimited print exports (×2 / ×4 / ×6)</li>
+        <li>Full-resolution workflow</li>
+        <li>All processing modes</li>
+        <li>Cancel anytime</li>
+      </ul>
+    </div>
+    <div class="pro-action">
+      {% if user and prices.pro_monthly %}
+      <form action="/billing/create-checkout-session" method="post">
+        <input type="hidden" name="checkout_type" value="pro_subscription">
+        <input type="hidden" name="price_id" value="{{ prices.pro_monthly }}">
+        <div class="pack-discount-row">
+          <input type="text" name="discount_code" placeholder="Discount code" class="text-input text-input-sm">
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg">Upgrade to Pro</button>
+      </form>
+      {% elif user %}
+      <p class="pack-unavail">Not configured</p>
+      {% else %}
+      <a href="/signup" class="btn btn-secondary btn-lg">Sign up to subscribe</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+
+<!-- ── Ambassador Access ──────────────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-title">Ambassador Access</div>
+
+  <p style="font-size:14px; color:var(--text-2); margin-bottom:20px;">
+    Redeem a key for unlimited access. Keys are issued directly by ele.
+    Each key can be redeemed once.
+  </p>
+
+  {% if user %}
+    {% if user.plan_type == "ambassador" %}
+    <div class="alert alert-info" style="margin-bottom:0;">
+      Ambassador access active. Unlimited exports enabled.
+    </div>
+    {% else %}
+    <form action="/redeem-ambassador-key" method="post" style="display:flex; gap:10px; flex-wrap:wrap;">
+      <input type="text" name="key_value" placeholder="AMB-XXXXXXXXXXXXXXXXXXXX"
+             class="text-input" style="flex:1; min-width:200px;" required>
+      <button type="submit" class="btn btn-secondary">Redeem Ambassador Key</button>
+    </form>
+    {% endif %}
+  {% else %}
+  <p style="font-size:14px; color:var(--text-2);">
+    <a href="/login">Log in</a> to redeem an Ambassador key.
+  </p>
+  {% endif %}
+</div>
+
+
+<!-- ── Magazine discount note ─────────────────────────────────────────────── -->
+<div class="alert alert-info" style="margin-bottom:0;">
+  <strong>Magazine readers:</strong> use your discount code at checkout when purchasing
+  Creator Credits or Pro Monthly above. Discounts are applied at Stripe checkout.
+</div>
+
+{% endblock %}

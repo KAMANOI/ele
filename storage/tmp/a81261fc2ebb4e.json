@@ -1,0 +1,39 @@
+{
+  "job_id": "a81261fc2ebb4e",
+  "original_filename": "_Z6R1987-Enhanced-NR.jpg",
+  "mode": "creator",
+  "flow": "quick",
+  "upload_path": "/Users/kamanoihiroshiki/projects/ele/storage/uploads/a81261fc2ebb4e.jpg",
+  "output_path": "/Users/kamanoihiroshiki/projects/ele/storage/outputs/a81261fc2ebb4e_master.tiff",
+  "preview_original": "/previews/a81261fc2ebb4e_original.jpg",
+  "preview_processed": "/previews/a81261fc2ebb4e_preview.jpg",
+  "report": {
+    "compression_score": 0.0599,
+    "clipping_score": 0.2001,
+    "sharpness_score": 0.585,
+    "noise_score": 0.0023,
+    "dynamic_range_score": 0.8019,
+    "notes": [
+      "highlight clipping detected (0.6% of pixels)",
+      "shadow clipping detected (39.4% of pixels)"
+    ]
+  },
+  "metadata": {
+    "mode": "creator",
+    "input": "/Users/kamanoihiroshiki/projects/ele/storage/uploads/a81261fc2ebb4e.jpg",
+    "export_size": "2624\u00d73936",
+    "compression_score": "0.059925615787506104",
+    "clipping_score": "0.2000708458042088",
+    "sharpness_score": "0.585009902715683",
+    "noise_score": "0.0023053655695548514",
+    "dynamic_range_score": "0.8018634370870076"
+  },
+  "export_target": null,
+  "print_scale": 2,
+  "status": "ready",
+  "error": null,
+  "created_at": "2026-03-13T11:55:07.920291+00:00",
+  "print_style": null,
+  "input_size": "2624x3936",
+  "export_size": "2624\u00d73936"
+}

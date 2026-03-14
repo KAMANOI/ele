@@ -1,0 +1,461 @@
+{% extends "base.html" %}
+{% block title %}Result — ele{% endblock %}
+
+{% block content %}
+
+<!-- ── 1. Before / After ─────────────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-title">Before / After</div>
+
+  {% if state.preview_original and state.preview_processed %}
+  <!-- Drag the handle to compare original vs ele pseudo-RAW master -->
+  <div class="ba-slider" id="ba-slider" role="slider" aria-label="Before/after comparison">
+    <img src="{{ state.preview_original }}"
+         class="ba-img-orig"
+         alt="Original — {{ state.original_filename }}"
+         draggable="false">
+    <img src="{{ state.preview_processed }}"
+         class="ba-img-proc"
+         alt="ele pseudo-RAW master"
+         draggable="false">
+    <div class="ba-handle" aria-hidden="true">
+      <div class="ba-handle-line"></div>
+      <div class="ba-handle-knob">
+        <!-- Double-headed horizontal arrow -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+             fill="none" stroke="#333" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>
+        </svg>
+      </div>
+    </div>
+    <span class="ba-label ba-label-l">Original</span>
+    <span class="ba-label ba-label-r">ele Master</span>
+  </div>
+  {% else %}
+  <!-- Fallback: static side-by-side if one image is missing -->
+  <div class="preview-grid" style="margin-bottom:16px;">
+    <div class="preview-panel">
+      <div class="preview-panel-head">
+        Original
+        <span>{{ state.original_filename }}</span>
+      </div>
+      {% if state.preview_original %}
+        <img src="{{ state.preview_original }}" alt="Original preview" loading="lazy">
+      {% else %}
+        <div class="no-preview">Preview unavailable</div>
+      {% endif %}
+    </div>
+    <div class="preview-panel">
+      <div class="preview-panel-head">
+        ele master
+        <span>mode: {{ state.mode }}{% if target_label %} &middot; {{ target_label }}{% endif %}</span>
+      </div>
+      {% if state.preview_processed %}
+        <img src="{{ state.preview_processed }}" alt="Processed preview" loading="lazy">
+      {% else %}
+        <div class="no-preview">Preview unavailable</div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Heuristic crop comparisons (skin / sky regions as supporting proof) -->
+  {% if crops and (crops.has_skin or crops.has_sky) %}
+  <div class="crop-section">
+    {% if crops.has_skin and crops.skin_orig_url and crops.skin_master_url %}
+    <div class="crop-row">
+      <div class="crop-label">Skin tone region</div>
+      <div class="crop-pair">
+        <div class="crop-panel">
+          <div class="crop-panel-head">Original</div>
+          <img src="{{ crops.skin_orig_url }}" alt="Skin tone — original" loading="lazy">
+        </div>
+        <div class="crop-panel">
+          <div class="crop-panel-head">ele master</div>
+          <img src="{{ crops.skin_master_url }}" alt="Skin tone — ele master" loading="lazy">
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if crops.has_sky and crops.sky_orig_url and crops.sky_master_url %}
+    <div class="crop-row">
+      <div class="crop-label">Sky / gradient region</div>
+      <div class="crop-pair">
+        <div class="crop-panel">
+          <div class="crop-panel-head">Original</div>
+          <img src="{{ crops.sky_orig_url }}" alt="Sky region — original" loading="lazy">
+        </div>
+        <div class="crop-panel">
+          <div class="crop-panel-head">ele master</div>
+          <img src="{{ crops.sky_master_url }}" alt="Sky region — ele master" loading="lazy">
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="alert alert-info" style="font-size:13px; margin-top:16px; margin-bottom:0;">
+    The ele preview is intentionally flatter than the original — highlights, shadows,
+    and white balance are left open for your editor.
+    The downloaded file is a <strong>16-bit TIFF with ProPhoto RGB ICC</strong> — assign
+    <strong>ProPhoto RGB</strong> on import to Lightroom, Photoshop, or Capture One.
+    {% if crops and (crops.has_skin or crops.has_sky) %}
+    Crop regions are detected heuristically.
+    {% endif %}
+  </div>
+</div>
+
+
+<!-- ── 2. Histogram & Headroom ────────────────────────────────────────────── -->
+{% if orig_hist or master_hist %}
+<div class="card">
+  <div class="card-title">Histogram &amp; Headroom</div>
+
+  <!-- Overlapping smooth luminance histograms -->
+  <div class="hist-svg-wrap">
+    <svg viewBox="0 0 600 120" xmlns="http://www.w3.org/2000/svg"
+         style="width:100%; height:auto; display:block; background:#141414; border-radius:4px;">
+      <defs>
+        <!-- Original: warm grey gradient fill -->
+        <linearGradient id="grad-orig" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stop-color="rgba(200,200,195,0.45)"/>
+          <stop offset="100%" stop-color="rgba(200,200,195,0.05)"/>
+        </linearGradient>
+        <!-- ele master: blue gradient fill -->
+        <linearGradient id="grad-master" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stop-color="rgba(91,156,246,0.55)"/>
+          <stop offset="100%" stop-color="rgba(91,156,246,0.07)"/>
+        </linearGradient>
+      </defs>
+
+      <!-- Subtle grid lines -->
+      <line x1="150" y1="0" x2="150" y2="100" stroke="#202020" stroke-width="1"/>
+      <line x1="300" y1="0" x2="300" y2="100" stroke="#202020" stroke-width="1"/>
+      <line x1="450" y1="0" x2="450" y2="100" stroke="#202020" stroke-width="1"/>
+
+      <!-- Shadow clipping zone -->
+      <rect x="0"   y="0" width="18"  height="100" fill="rgba(255,80,80,0.06)"/>
+      <line x1="18"  y1="0" x2="18"  y2="100" stroke="#553333" stroke-width="1" stroke-dasharray="3,3"/>
+
+      <!-- Highlight clipping zone -->
+      <rect x="582" y="0" width="18"  height="100" fill="rgba(255,200,80,0.06)"/>
+      <line x1="582" y1="0" x2="582" y2="100" stroke="#554433" stroke-width="1" stroke-dasharray="3,3"/>
+
+      <!-- Original histogram — filled area with smooth bezier path -->
+      {% if orig_hist and orig_hist.svg_path %}
+      <path d="{{ orig_hist.svg_path }}"
+            fill="url(#grad-orig)"
+            stroke="rgba(210,210,205,0.65)"
+            stroke-width="1.2"
+            fill-rule="nonzero"/>
+      {% elif orig_hist and orig_hist.svg_points %}
+      <polygon points="{{ orig_hist.svg_points }}"
+               fill="rgba(200,200,195,0.30)" stroke="rgba(210,210,205,0.55)" stroke-width="1"/>
+      {% endif %}
+
+      <!-- ele master histogram — filled area, blue, in front -->
+      {% if master_hist and master_hist.svg_path %}
+      <path d="{{ master_hist.svg_path }}"
+            fill="url(#grad-master)"
+            stroke="rgba(91,156,246,0.90)"
+            stroke-width="1.4"
+            fill-rule="nonzero"/>
+      {% elif master_hist and master_hist.svg_points %}
+      <polygon points="{{ master_hist.svg_points }}"
+               fill="rgba(91,156,246,0.35)" stroke="rgba(91,156,246,0.80)" stroke-width="0.8"/>
+      {% endif %}
+
+      <!-- Bottom axis line -->
+      <line x1="0" y1="100" x2="600" y2="100" stroke="#2a2a2a" stroke-width="1"/>
+
+      <!-- X-axis labels -->
+      <text x="4"   y="113" fill="#444" font-size="9" font-family="monospace">Shadows</text>
+      <text x="300" y="113" fill="#444" font-size="9" font-family="monospace" text-anchor="middle">Midtones</text>
+      <text x="596" y="113" fill="#444" font-size="9" font-family="monospace" text-anchor="end">Highlights</text>
+
+      <!-- Clipping zone labels -->
+      <text x="3"   y="9" fill="#663333" font-size="8" font-family="monospace">clip</text>
+      <text x="597" y="9" fill="#664433" font-size="8" font-family="monospace" text-anchor="end">clip</text>
+    </svg>
+  </div>
+
+  <!-- Legend -->
+  <div style="display:flex; gap:20px; flex-wrap:wrap; font-size:12px; color:#888; margin-bottom:18px; align-items:center;">
+    <span style="display:flex; align-items:center; gap:7px;">
+      <span style="display:inline-block; width:26px; height:3px; background:rgba(210,210,205,0.75); border-radius:2px; box-shadow:0 0 0 3px rgba(200,200,195,0.18);"></span>
+      Original JPEG
+    </span>
+    <span style="display:flex; align-items:center; gap:7px;">
+      <span style="display:inline-block; width:26px; height:3px; background:rgba(91,156,246,0.90); border-radius:2px; box-shadow:0 0 0 3px rgba(91,156,246,0.15);"></span>
+      ele pseudo-RAW master
+    </span>
+    <span style="display:flex; align-items:center; gap:7px; color:#555;">
+      <span style="display:inline-block; width:14px; height:10px; border-left:1.5px dashed #554433; background:rgba(255,200,80,0.06); border-radius:1px;"></span>
+      Clipping zones
+    </span>
+  </div>
+
+  <!-- Tonal stats: side by side -->
+  <div class="hist-stats-row">
+
+    {% if orig_hist %}
+    <div class="hist-stat-block">
+      <div class="hist-stat-label hist-stat-label-orig">Original JPEG</div>
+      {% if orig_hist.dr_stops %}
+      <div class="hist-stat-line">
+        Dynamic range <span class="hist-stat-val">≈ {{ orig_hist.dr_stops }} stops</span>
+        <span style="color:#555; font-size:11px;">(estimated)</span>
+      </div>
+      {% endif %}
+      <div class="hist-stat-line">
+        Dark pixels (&lt; 10&#8202;%)
+        <span class="hist-stat-val">{{ orig_hist.shadow_pct }}%</span>
+      </div>
+      <div class="hist-stat-line">
+        Bright pixels (&gt; 90&#8202;%)
+        <span class="hist-stat-val">{{ orig_hist.highlight_pct }}%</span>
+      </div>
+      <div class="hist-clip-indicator">
+        <span>Shadow clip
+          {% if orig_hist.shadow_clip_pct and orig_hist.shadow_clip_pct > 1.0 %}
+          <span class="hist-clip-warn">{{ orig_hist.shadow_clip_pct }}%</span>
+          {% else %}
+          <span style="color:#555;">{{ orig_hist.shadow_clip_pct }}%</span>
+          {% endif %}
+        </span>
+        <span>Highlight clip
+          {% if orig_hist.highlight_clip_pct and orig_hist.highlight_clip_pct > 1.0 %}
+          <span class="hist-clip-warn">{{ orig_hist.highlight_clip_pct }}%</span>
+          {% else %}
+          <span style="color:#555;">{{ orig_hist.highlight_clip_pct }}%</span>
+          {% endif %}
+        </span>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if master_hist %}
+    <div class="hist-stat-block">
+      <div class="hist-stat-label hist-stat-label-master">ele pseudo-RAW master</div>
+      {% if master_hist.dr_stops %}
+      <div class="hist-stat-line">
+        Dynamic range <span class="hist-stat-val">≈ {{ master_hist.dr_stops }} stops</span>
+        <span style="color:#555; font-size:11px;">(estimated)</span>
+      </div>
+      {% endif %}
+      <div class="hist-stat-line">
+        Dark pixels (&lt; 10&#8202;%)
+        <span class="hist-stat-val">{{ master_hist.shadow_pct }}%</span>
+      </div>
+      <div class="hist-stat-line">
+        Bright pixels (&gt; 90&#8202;%)
+        <span class="hist-stat-val">{{ master_hist.highlight_pct }}%</span>
+      </div>
+      {% if edit_metrics %}
+      <div class="hist-stat-line" style="margin-top:2px;">
+        Highlight headroom
+        <span class="hist-stat-val">{{ edit_metrics.highlight_headroom }} / 10</span>
+      </div>
+      <div class="hist-stat-line">
+        Shadow headroom
+        <span class="hist-stat-val">{{ edit_metrics.shadow_headroom }} / 10</span>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+  </div>
+
+  <div class="alert alert-info" style="font-size:12px; margin-top:4px; margin-bottom:0;">
+    Histograms are computed from the files as stored. The master TIFF uses ROMM gamma
+    (ProPhoto RGB), so its histogram reflects the encoded tonal distribution —
+    not colour-managed display luminance. Dynamic range is estimated from the
+    1st–99th percentile of non-black pixels. All values are heuristic estimates.
+  </div>
+</div>
+{% endif %}
+
+
+<!-- ── 3. Editability Metrics ──────────────────────────────────────────────── -->
+{% if edit_metrics %}
+<div class="card">
+  <div class="card-title">Editability Metrics</div>
+  <div class="metric-disclaimer">
+    Heuristic estimates — not scientifically precise. Higher = more editing latitude.
+  </div>
+
+  <div class="metric-list">
+
+    {% if edit_metrics.dr_stops is not none %}
+    {% set dr_pct = [((edit_metrics.dr_stops / 14.0) * 100)|round|int, 100]|min %}
+    <div class="metric-row">
+      <div class="metric-head">
+        <span class="metric-label">Dynamic Range</span>
+        <span class="metric-val">{{ edit_metrics.dr_stops }} stops</span>
+      </div>
+      <div class="metric-track">
+        <div class="metric-fill" style="width:{{ dr_pct }}%"></div>
+      </div>
+      <div class="metric-hint">Estimated from 1st–99th percentile of the master TIFF luminance</div>
+    </div>
+    {% endif %}
+
+    {% if edit_metrics.highlight_headroom is not none %}
+    <div class="metric-row">
+      <div class="metric-head">
+        <span class="metric-label">Highlight Headroom</span>
+        <span class="metric-val">{{ edit_metrics.highlight_headroom }} / 10</span>
+      </div>
+      <div class="metric-track">
+        <div class="metric-fill" style="width:{{ (edit_metrics.highlight_headroom * 10)|round|int }}%"></div>
+      </div>
+      <div class="metric-hint">How much room remains before highlights clip — higher = safer to push exposure</div>
+    </div>
+    {% endif %}
+
+    {% if edit_metrics.shadow_headroom is not none %}
+    <div class="metric-row">
+      <div class="metric-head">
+        <span class="metric-label">Shadow Headroom</span>
+        <span class="metric-val">{{ edit_metrics.shadow_headroom }} / 10</span>
+      </div>
+      <div class="metric-track">
+        <div class="metric-fill" style="width:{{ (edit_metrics.shadow_headroom * 10)|round|int }}%"></div>
+      </div>
+      <div class="metric-hint">Shadow detail availability — higher = more recoverable shadow range</div>
+    </div>
+    {% endif %}
+
+    {% if edit_metrics.has_skin and edit_metrics.skin_stability is not none %}
+    <div class="metric-row">
+      <div class="metric-head">
+        <span class="metric-label">Skin Tone Stability</span>
+        <span class="metric-val">{{ edit_metrics.skin_stability }} / 10</span>
+      </div>
+      <div class="metric-track">
+        <div class="metric-fill metric-fill-warm" style="width:{{ (edit_metrics.skin_stability * 10)|round|int }}%"></div>
+      </div>
+      <div class="metric-hint">Smoothness of skin tones in master — higher = less banding risk in grade</div>
+    </div>
+    {% endif %}
+
+    {% if edit_metrics.has_sky and edit_metrics.sky_stability is not none %}
+    <div class="metric-row">
+      <div class="metric-head">
+        <span class="metric-label">Sky / Gradient Stability</span>
+        <span class="metric-val">{{ edit_metrics.sky_stability }} / 10</span>
+      </div>
+      <div class="metric-track">
+        <div class="metric-fill metric-fill-sky" style="width:{{ (edit_metrics.sky_stability * 10)|round|int }}%"></div>
+      </div>
+      <div class="metric-hint">Sky blue-channel headroom + gradient uniformity — higher = banding-resistant sky</div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <div class="alert alert-info" style="font-size:12px; margin-top:14px; margin-bottom:0;">
+    Skin tone and sky / gradient metrics are detected heuristically from colour and spatial rules.
+    Scores are indicative only — not absolute measurements.
+  </div>
+</div>
+{% endif %}
+
+
+<!-- ── 4. Export ───────────────────────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-title">Export</div>
+
+  <div class="result-hero">
+    <div class="result-check">✓</div>
+    <div>
+      <div class="result-title">Pseudo-RAW master ready</div>
+      <div class="result-sub">
+        {{ state.original_filename }}
+        &mdash; mode: {{ state.mode }}
+        {% if target_label %}&mdash; target: {{ target_label }}{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div style="font-size:12px; color:#888; margin-bottom:22px; display:flex; gap:24px; flex-wrap:wrap;">
+    {% if state.input_size %}
+    <span><strong style="color:#aaa">Input</strong> {{ state.input_size }} px</span>
+    {% endif %}
+    {% if download_size %}
+    <span title="Measured from the master TIFF on disk — verified, not from pipeline metadata">
+      <strong style="color:#aaa">Download (TIFF)</strong> {{ download_size }} px
+    </span>
+    {% elif state.export_size %}
+    <span><strong style="color:#aaa">Export (TIFF)</strong> {{ state.export_size }} px</span>
+    {% endif %}
+    {% if preview_size %}
+    <span><strong style="color:#aaa">Preview (JPEG)</strong> {{ preview_size }} px</span>
+    {% else %}
+    <span><strong style="color:#aaa">Preview (JPEG)</strong> &le; 1200 px long edge</span>
+    {% endif %}
+  </div>
+
+  <div class="btn-row">
+    <a href="/download/{{ job_id }}" class="btn btn-success btn-lg">
+      ⬇ Download {{ dl_filename }}
+    </a>
+    <a href="/" class="btn btn-secondary">Upload another</a>
+    {% if state.flow == 'quick' %}
+    <a href="/preview/{{ job_id }}" class="btn btn-secondary">
+      Preview &amp; re-export
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+
+<!-- ── Degradation report ─────────────────────────────────────────────────── -->
+{% if report_rows %}
+<div class="card">
+  <div class="card-title">Degradation Report</div>
+  <div class="report-list">
+    {% for row in report_rows %}
+    <div class="report-row">
+      <div class="report-row-head">
+        <span class="report-row-label">{{ row.label }}</span>
+        <span class="report-row-val">{{ row.value }}</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:{{ row.pct }}%"></div>
+      </div>
+      <div class="report-hint">{{ row.hint }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if state.report and state.report.notes %}
+  <ul class="notes">
+    {% for note in state.report.notes %}
+    <li>{{ note }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</div>
+{% endif %}
+
+
+<!-- ── Pipeline metadata ──────────────────────────────────────────────────── -->
+{% if state.metadata %}
+<div class="card">
+  <div class="card-title">Pipeline Metadata</div>
+  <div class="meta-grid">
+    {% for k, v in state.metadata.items() %}
+    <div class="meta-item">
+      <span class="meta-key">{{ k }}</span>
+      <span class="meta-val">{{ v }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<script src="/static/result.js"></script>
+{% endblock %}

@@ -1,0 +1,39 @@
+{
+  "job_id": "a45ca0e7ade543",
+  "original_filename": "test.jpg",
+  "mode": "creator",
+  "flow": "preview",
+  "upload_path": "/Users/kamanoihiroshiki/projects/ele/storage/uploads/a45ca0e7ade543.jpg",
+  "output_path": "/Users/kamanoihiroshiki/projects/ele/storage/outputs/a45ca0e7ade543_master.tiff",
+  "preview_original": "/previews/a45ca0e7ade543_original.jpg",
+  "preview_processed": "/previews/a45ca0e7ade543_preview.jpg",
+  "report": {
+    "compression_score": 0.0,
+    "clipping_score": 0.049,
+    "sharpness_score": 1.0,
+    "noise_score": 1.0,
+    "dynamic_range_score": 0.6488,
+    "notes": [
+      "highlight clipping detected (0.8% of pixels)",
+      "shadow clipping detected (9.0% of pixels)"
+    ]
+  },
+  "metadata": {
+    "mode": "creator",
+    "input": "/Users/kamanoihiroshiki/projects/ele/storage/uploads/a45ca0e7ade543.jpg",
+    "export_size": "64\u00d764",
+    "compression_score": "0.0",
+    "clipping_score": "0.0489501953125",
+    "sharpness_score": "1.0",
+    "noise_score": "1.0",
+    "dynamic_range_score": "0.6487762492168399"
+  },
+  "export_target": "lightroom",
+  "print_scale": null,
+  "status": "done",
+  "error": null,
+  "created_at": "2026-03-13T03:37:25.760609+00:00",
+  "print_style": null,
+  "input_size": "64x64",
+  "export_size": "64\u00d764"
+}

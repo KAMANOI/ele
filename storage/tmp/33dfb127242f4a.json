@@ -1,0 +1,38 @@
+{
+  "job_id": "33dfb127242f4a",
+  "original_filename": "DSC_6264.JPG",
+  "mode": "pro",
+  "flow": "preview",
+  "upload_path": "/Users/kamanoihiroshiki/projects/ele/storage/uploads/33dfb127242f4a.jpg",
+  "output_path": "/Users/kamanoihiroshiki/projects/ele/storage/outputs/33dfb127242f4a_master.tiff",
+  "preview_original": "/previews/33dfb127242f4a_original.jpg",
+  "preview_processed": "/previews/33dfb127242f4a_preview.jpg",
+  "report": {
+    "compression_score": 0.8544,
+    "clipping_score": 0.0887,
+    "sharpness_score": 0.1158,
+    "noise_score": 0.0,
+    "dynamic_range_score": 0.8241,
+    "notes": [
+      "shadow clipping detected (17.7% of pixels)",
+      "possible JPEG block artefacts (blockiness ratio=1.34)"
+    ]
+  },
+  "metadata": {
+    "mode": "pro",
+    "input": "/Users/kamanoihiroshiki/projects/ele/storage/uploads/33dfb127242f4a.jpg",
+    "export_size": "5504\u00d78256",
+    "compression_score": "0.854412317276001",
+    "clipping_score": "0.08867732602152628",
+    "sharpness_score": "0.11576898396015167",
+    "noise_score": "0.0",
+    "dynamic_range_score": "0.8241331088704994"
+  },
+  "export_target": "photoshop",
+  "print_scale": 2,
+  "status": "done",
+  "error": null,
+  "created_at": "2026-03-12T02:57:56.129774+00:00",
+  "input_size": "5504x8256",
+  "export_size": "5504\u00d78256"
+}

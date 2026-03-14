@@ -1,0 +1,37 @@
+{
+  "job_id": "11a430650bff43",
+  "original_filename": "image_43106336.PNG",
+  "mode": "pro",
+  "flow": "quick",
+  "upload_path": "/Users/kamanoihiroshiki/projects/ele/storage/uploads/11a430650bff43.png",
+  "output_path": "/Users/kamanoihiroshiki/projects/ele/storage/outputs/11a430650bff43_master.tiff",
+  "preview_original": "/previews/11a430650bff43_original.jpg",
+  "preview_processed": "/previews/11a430650bff43_preview.jpg",
+  "report": {
+    "compression_score": 0.0121,
+    "clipping_score": 0.0056,
+    "sharpness_score": 0.0346,
+    "noise_score": 0.0028,
+    "dynamic_range_score": 0.6025,
+    "notes": [
+      "shadow clipping detected (1.1% of pixels)"
+    ]
+  },
+  "metadata": {
+    "mode": "pro",
+    "input": "/Users/kamanoihiroshiki/projects/ele/storage/uploads/11a430650bff43.png",
+    "export_size": "832\u00d71248",
+    "compression_score": "0.012145638465881348",
+    "clipping_score": "0.005636903661242604",
+    "sharpness_score": "0.034565560054033995",
+    "noise_score": "0.002756220055744052",
+    "dynamic_range_score": "0.6024817545990692"
+  },
+  "export_target": null,
+  "print_scale": 2,
+  "status": "ready",
+  "error": null,
+  "created_at": "2026-03-12T07:14:49.434034+00:00",
+  "input_size": "832x1248",
+  "export_size": "832\u00d71248"
+}

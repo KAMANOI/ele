@@ -1,0 +1,35 @@
+{
+  "job_id": "503715f81d7347",
+  "original_filename": "_Z6R1987-Enhanced-NR.jpg",
+  "mode": "creator",
+  "flow": "preview",
+  "upload_path": "/Users/kamanoihiroshiki/projects/ele/storage/uploads/503715f81d7347.jpg",
+  "output_path": "/Users/kamanoihiroshiki/projects/ele/storage/outputs/503715f81d7347_print_x6.tiff",
+  "preview_original": "/previews/503715f81d7347_original.jpg",
+  "preview_processed": "/previews/503715f81d7347_processed.jpg",
+  "report": {
+    "compression_score": 0.0599,
+    "clipping_score": 0.2001,
+    "sharpness_score": 0.585,
+    "noise_score": 0.0023,
+    "dynamic_range_score": 1.0,
+    "notes": [
+      "highlight clipping detected (0.6% of pixels)",
+      "shadow clipping detected (39.4% of pixels)"
+    ]
+  },
+  "metadata": {
+    "mode": "creator",
+    "input": "/Users/kamanoihiroshiki/projects/ele/storage/uploads/503715f81d7347.jpg",
+    "compression_score": "0.059925615787506104",
+    "clipping_score": "0.2000708458042088",
+    "sharpness_score": "0.585009902715683",
+    "noise_score": "0.0023053655695548514",
+    "dynamic_range_score": "1.0"
+  },
+  "export_target": "print",
+  "print_scale": 6,
+  "status": "done",
+  "error": null,
+  "created_at": "2026-03-11T01:56:25.377059+00:00"
+}

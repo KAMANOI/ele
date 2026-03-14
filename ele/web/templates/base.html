@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}ele — Editable Photo Masters{% endblock %}</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="/" class="logo">ele</a>
+    <span class="tagline">pseudo-RAW preprocessing</span>
+    <nav class="site-nav">
+      <a href="/pricing" class="nav-link">Pricing</a>
+      {% if user %}
+        {% if user.plan_type == "creator" %}
+          <span class="nav-badge nav-badge-credits">{{ user.credits }} credits</span>
+        {% elif user.plan_type == "pro" %}
+          <span class="nav-badge nav-badge-pro">Pro</span>
+        {% elif user.plan_type == "ambassador" %}
+          <span class="nav-badge nav-badge-ambassador">Ambassador</span>
+        {% endif %}
+        <a href="/account" class="nav-link">Account</a>
+        <form action="/logout" method="post" style="display:inline;">
+          <button type="submit" class="nav-link nav-btn-logout">Log out</button>
+        </form>
+      {% else %}
+        <a href="/login" class="nav-link">Log in</a>
+        <a href="/signup" class="btn btn-primary nav-signup">Sign up</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    ele &mdash; Outputs are editable masters, not finished images.
+    &nbsp;&middot;&nbsp; Assign ProPhoto RGB on import.
+    &nbsp;&middot;&nbsp; <a href="/pricing">Pricing</a>
+  </div>
+</footer>
+
+</body>
+</html>
