@@ -208,6 +208,22 @@ def pricing_page(request: Request, db: Session = Depends(get_db)) -> HTMLRespons
 # Checkout
 # ---------------------------------------------------------------------------
 
+def _allowed_price_ids(checkout_type: str) -> set[str]:
+    """Return the set of configured price IDs valid for the given checkout_type."""
+    cfg = get_config()
+    if checkout_type == "creator_pack":
+        return {
+            p for p in (
+                cfg.stripe_price_creator_10,
+                cfg.stripe_price_creator_50,
+                cfg.stripe_price_creator_200,
+            ) if p
+        }
+    if checkout_type == "pro_subscription":
+        return {p for p in (cfg.stripe_price_pro_monthly,) if p}
+    return set()
+
+
 @router.post("/billing/create-checkout-session", response_model=None)
 async def create_checkout_session(
     request:       Request,
@@ -224,6 +240,19 @@ async def create_checkout_session(
         return _render(request, "pricing.html", {
             "user":   user,
             "error":  "Invalid checkout type.",
+            "prices": _prices(),
+        }, status_code=400)
+
+    # Validate price_id against the whitelist for this checkout_type
+    allowed = _allowed_price_ids(checkout_type)
+    if not allowed or price_id not in allowed:
+        log.warning(
+            "Rejected checkout: price_id %r not in allowed set for %s (user#%d)",
+            price_id, checkout_type, user.id,
+        )
+        return _render(request, "pricing.html", {
+            "user":   user,
+            "error":  "Invalid price selection. Please try again.",
             "prices": _prices(),
         }, status_code=400)
 
@@ -294,19 +323,15 @@ async def stripe_webhook(
     sig     = request.headers.get("stripe-signature", "")
 
     if not cfg.stripe_webhook_secret:
-        log.warning("STRIPE_WEBHOOK_SECRET not set — skipping signature verification")
-        try:
-            import json
-            event = json.loads(payload)
-        except Exception as exc:
-            raise HTTPException(status_code=400, detail=str(exc))
-    else:
-        try:
-            event = stripe.Webhook.construct_event(payload, sig, cfg.stripe_webhook_secret)
-        except stripe.errors.SignatureVerificationError:
-            raise HTTPException(status_code=400, detail="Invalid webhook signature")
-        except Exception as exc:
-            raise HTTPException(status_code=400, detail=str(exc))
+        log.error("STRIPE_WEBHOOK_SECRET not configured — rejecting webhook")
+        raise HTTPException(status_code=500, detail="Webhook secret not configured")
+
+    try:
+        event = stripe.Webhook.construct_event(payload, sig, cfg.stripe_webhook_secret)
+    except stripe.errors.SignatureVerificationError:
+        raise HTTPException(status_code=400, detail="Invalid webhook signature")
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
     event_type = event["type"]
     log.info("Stripe webhook received: %s", event_type)

@@ -141,13 +141,17 @@ def handle_checkout_completed(db: Session, event: dict) -> None:
         user.stripe_customer_id = customer_id
         db.commit()
 
-    # Update log entry status
+    # Idempotency: skip if this session was already fulfilled
     stripe_session_id = session_obj.get("id", "")
     log_entry = (
         db.query(CheckoutSessionLog)
         .filter(CheckoutSessionLog.stripe_session_id == stripe_session_id)
         .first()
     )
+    if log_entry and log_entry.status == "completed":
+        log.info("Skipping duplicate checkout.session.completed for %s", stripe_session_id)
+        return
+
     if log_entry:
         log_entry.status = "completed"
         db.commit()
