@@ -121,11 +121,18 @@ def create_checkout_session(
 # Webhook handlers
 # ---------------------------------------------------------------------------
 
+def _to_dict(obj) -> dict:
+    """Convert a Stripe SDK object or plain dict to a plain dict."""
+    if isinstance(obj, dict):
+        return obj
+    return obj.to_dict() if hasattr(obj, "to_dict") else dict(obj)
+
+
 def handle_checkout_completed(db: Session, event: dict) -> None:
     """checkout.session.completed — fulfil credit pack purchases."""
     from ele.billing import services as svc
 
-    session_obj = event["data"]["object"]
+    session_obj = _to_dict(event["data"]["object"])
     meta        = session_obj.get("metadata", {})
     user_id_str = meta.get("user_id")
     if not user_id_str:
@@ -190,7 +197,7 @@ def handle_subscription_created_or_updated(db: Session, event: dict) -> None:
     """customer.subscription.created / customer.subscription.updated."""
     from ele.billing import services as svc
 
-    sub         = event["data"]["object"]
+    sub         = _to_dict(event["data"]["object"])
     customer_id = sub.get("customer")
     status      = sub.get("status", "")
     sub_id      = sub.get("id")
@@ -224,7 +231,7 @@ def handle_subscription_deleted(db: Session, event: dict) -> None:
     """customer.subscription.deleted — downgrade plan."""
     from ele.billing import services as svc
 
-    sub    = event["data"]["object"]
+    sub    = _to_dict(event["data"]["object"])
     sub_id = sub.get("id")
 
     user = svc.get_user_by_stripe_subscription_id(db, sub_id)
@@ -244,7 +251,7 @@ def handle_invoice_payment_failed(db: Session, event: dict) -> None:
     """invoice.payment_failed — mark subscription as past_due."""
     from ele.billing import services as svc
 
-    invoice     = event["data"]["object"]
+    invoice     = _to_dict(event["data"]["object"])
     customer_id = invoice.get("customer")
     sub_id      = invoice.get("subscription")
 
