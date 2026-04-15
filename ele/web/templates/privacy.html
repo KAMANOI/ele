@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}プライバシーポリシー — ele{% endblock %}
+
+{% block content %}
+<div class="hero">
+  <h1>プライバシーポリシー</h1>
+  <p class="lead">最終更新日：2026年4月15日</p>
+</div>
+
+<div class="card" style="max-width:720px;">
+
+  <p>釜野井 弘規（以下「当方」）は、eleサービス（以下「本サービス」）における利用者の個人情報の取扱いについて、以下のとおりプライバシーポリシー（以下「本ポリシー」）を定めます。</p>
+
+  <h2 style="margin-top:2rem;">1. 収集する情報</h2>
+  <p>本サービスは以下の情報を収集します。</p>
+  <ul>
+    <li><strong>アカウント情報：</strong>メールアドレス、パスワード（bcryptにてハッシュ化）</li>
+    <li><strong>決済情報：</strong>クレジットカード番号等の決済情報はStripe, Inc.が管理します。当方はカード番号を保存しません。</li>
+    <li><strong>利用情報：</strong>エクスポート回数、プラン種別、処理ジョブのメタデータ</li>
+    <li><strong>アップロードデータ：</strong>処理のためにアップロードされた画像ファイル（処理完了後に削除されます）</li>
+    <li><strong>ログ情報：</strong>アクセス日時、IPアドレス、ブラウザ情報</li>
+  </ul>
+
+  <h2 style="margin-top:2rem;">2. 情報の利用目的</h2>
+  <ul>
+    <li>本サービスの提供・運営・改善</li>
+    <li>決済処理および請求管理</li>
+    <li>サポート対応</li>
+    <li>利用規約違反の調査・対応</li>
+    <li>法令に基づく対応</li>
+  </ul>
+
+  <h2 style="margin-top:2rem;">3. 第三者への提供</h2>
+  <p>当方は、以下の場合を除き、利用者の個人情報を第三者に提供しません。</p>
+  <ul>
+    <li>利用者の同意がある場合</li>
+    <li>法令に基づく場合</li>
+    <li>決済処理のためにStripe, Inc.に提供する場合（Stripeのプライバシーポリシーが適用されます）</li>
+  </ul>
+
+  <h2 style="margin-top:2rem;">4. データの保管と削除</h2>
+  <ul>
+    <li>アップロード画像はサーバーで処理後、速やかに削除します。</li>
+    <li>アカウント情報はアカウント削除の申請をいただいた後30日以内に削除します。</li>
+    <li>アカウント削除の申請は <a href="mailto:hirokikamanoi@gmail.com">hirokikamanoi@gmail.com</a> までご連絡ください。</li>
+  </ul>
+
+  <h2 style="margin-top:2rem;">5. セキュリティ</h2>
+  <p>当方は、利用者の個人情報を適切に管理し、不正アクセス・紛失・破損・改ざん・漏洩等を防止するために合理的なセキュリティ対策を講じます。ただし、インターネット上の完全な安全性を保証するものではありません。</p>
+
+  <h2 style="margin-top:2rem;">6. Cookieの利用</h2>
+  <p>本サービスはセッション管理のためにCookieを使用します。ブラウザの設定によりCookieを無効にすることができますが、その場合、ログイン機能が利用できなくなります。</p>
+
+  <h2 style="margin-top:2rem;">7. ポリシーの変更</h2>
+  <p>当方は、必要に応じて本ポリシーを変更することがあります。変更後のポリシーはこのページに掲載した時点で効力を生じます。</p>
+
+  <h2 style="margin-top:2rem;">8. お問い合わせ</h2>
+  <p>個人情報の取扱いに関するお問い合わせは下記までご連絡ください。</p>
+  <p>
+    事業者名：釜野井 弘規<br>
+    メールアドレス：<a href="mailto:hirokikamanoi@gmail.com">hirokikamanoi@gmail.com</a>
+  </p>
+
+</div>
+{% endblock %}

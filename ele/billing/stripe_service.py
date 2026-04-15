@@ -79,6 +79,15 @@ def create_checkout_session(
             "?session_id={CHECKOUT_SESSION_ID}"
         ),
         "cancel_url": f"{cfg.app_base_url}/billing/cancel",
+        "consent_collection": {"terms_of_service": "required"},
+        "custom_text": {
+            "terms_of_service_acceptance": {
+                "message": (
+                    f"[利用規約]({cfg.app_base_url}/terms) および "
+                    f"[プライバシーポリシー]({cfg.app_base_url}/privacy) に同意します。"
+                ),
+            },
+        },
         "metadata": {
             "user_id":       str(user.id),
             "checkout_type": checkout_type,
