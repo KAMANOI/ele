@@ -42,6 +42,11 @@ def _base_ctx(request: Request, db: Session) -> dict:
 # Health
 # ---------------------------------------------------------------------------
 
+@router.get("/guide", response_class=HTMLResponse)
+def guide_page(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
+    return _render(request, "guide.html", _base_ctx(request, db))
+
+
 @router.get("/terms", response_class=HTMLResponse)
 def terms_page(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
     return _render(request, "terms.html", _base_ctx(request, db))

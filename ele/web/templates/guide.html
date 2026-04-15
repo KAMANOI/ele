@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}使い方ガイド — ele{% endblock %}
+
+{% block content %}
+
+<div class="hero">
+  <h1>使い方ガイド</h1>
+  <p class="lead">eleはJPEGやAI生成画像を、Lightroom・Photoshop・Capture Oneで編集できる16-bit TIFFマスターに変換する前処理エンジンです。</p>
+</div>
+
+<!-- ── Step guide ──────────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-title">基本的な使い方（3ステップ）</div>
+
+  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:20px; margin-top:12px;">
+
+    <div style="text-align:center; padding:20px;">
+      <div style="font-size:2rem; margin-bottom:8px;">①</div>
+      <strong>画像をアップロード</strong>
+      <p style="font-size:13px; color:var(--text-2); margin-top:8px;">
+        JPEG・PNG・TIFFをドロップするか、クリックして選択。<br>
+        スマホ写真・一眼レフ写真・AI生成画像すべて対応。
+      </p>
+    </div>
+
+    <div style="text-align:center; padding:20px;">
+      <div style="font-size:2rem; margin-bottom:8px;">②</div>
+      <strong>処理モードを選択</strong>
+      <p style="font-size:13px; color:var(--text-2); margin-top:8px;">
+        用途に合わせてFree / Creator / Pro / Printから選択。<br>
+        迷ったらCreatorを選んでください。
+      </p>
+    </div>
+
+    <div style="text-align:center; padding:20px;">
+      <div style="font-size:2rem; margin-bottom:8px;">③</div>
+      <strong>ダウンロードして編集</strong>
+      <p style="font-size:13px; color:var(--text-2); margin-top:8px;">
+        出力されたTIFFをLightroomに読み込む際、<br>
+        カラースペースに <strong>ProPhoto RGB</strong> を指定してください。
+      </p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Processing modes ────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-title">処理モードの選び方</div>
+
+  <table style="width:100%; border-collapse:collapse; font-size:14px; margin-top:12px;">
+    <thead>
+      <tr style="border-bottom:2px solid var(--border);">
+        <th style="padding:10px 12px; text-align:left;">モード</th>
+        <th style="padding:10px 12px; text-align:left;">最大解像度</th>
+        <th style="padding:10px 12px; text-align:left;">出力形式</th>
+        <th style="padding:10px 12px; text-align:left;">クレジット</th>
+        <th style="padding:10px 12px; text-align:left;">こんな時に</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:10px 12px;"><strong>Free</strong></td>
+        <td style="padding:10px 12px;">4,000 px</td>
+        <td style="padding:10px 12px;">JPEG</td>
+        <td style="padding:10px 12px;">0（無料）</td>
+        <td style="padding:10px 12px; color:var(--text-2);">試しに動作確認したい</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:10px 12px;"><strong>Creator</strong></td>
+        <td style="padding:10px 12px;">8,000 px</td>
+        <td style="padding:10px 12px;">JPEG</td>
+        <td style="padding:10px 12px;">1</td>
+        <td style="padding:10px 12px; color:var(--text-2);">SNS投稿・Web用途の仕上げ</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:10px 12px;"><strong>Pro</strong></td>
+        <td style="padding:10px 12px;">8,000 px</td>
+        <td style="padding:10px 12px;"><strong>16-bit TIFF</strong></td>
+        <td style="padding:10px 12px;">1</td>
+        <td style="padding:10px 12px; color:var(--text-2);">Lightroom・Photoshopで本格編集</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 12px;"><strong>Print</strong></td>
+        <td style="padding:10px 12px;">×2 / ×4 / ×6</td>
+        <td style="padding:10px 12px;"><strong>16-bit TIFF</strong></td>
+        <td style="padding:10px 12px;">3</td>
+        <td style="padding:10px 12px; color:var(--text-2);">大判プリント・写真集・A2以上</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p style="font-size:13px; color:var(--text-2); margin-top:16px;">
+    ※ Proモードは <a href="/pricing">Pro Monthlyプラン</a> または Creator Creditsで利用できます。<br>
+    ※ Printモードは3クレジット消費します。
+  </p>
+</div>
+
+<!-- ── Export flow ─────────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-title">Quick Export と Preview の違い</div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:12px;">
+
+    <div style="padding:16px; background:var(--surface-2); border-radius:8px;">
+      <strong>Quick Export</strong>
+      <p style="font-size:13px; color:var(--text-2); margin-top:8px;">
+        処理後すぐにファイルをダウンロード。<br>
+        スピード重視・大量処理向け。
+      </p>
+    </div>
+
+    <div style="padding:16px; background:var(--surface-2); border-radius:8px;">
+      <strong>Preview &amp; Target Export</strong>
+      <p style="font-size:13px; color:var(--text-2); margin-top:8px;">
+        処理結果をブラウザでプレビューしてから出力先を選択。<br>
+        品質を確認してからダウンロードしたい時に。
+      </p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Lightroom import ────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-title">Lightroomへの読み込み方</div>
+
+  <p style="font-size:14px; color:var(--text-2);">
+    eleが出力するTIFFはProPhoto RGBカラースペースでエンコードされています。<br>
+    正しいカラーで編集するために、読み込み時に以下の設定を行ってください。
+  </p>
+
+  <ol style="font-size:14px; line-height:2; margin-top:12px; padding-left:20px;">
+    <li>TIFFファイルをLightroomにインポート</li>
+    <li>現像モジュール → <strong>カラーグレーディング</strong> パネルを確認</li>
+    <li>ファイルを選択した状態で右クリック →「このコピーで編集…」→ Photoshopで開く</li>
+    <li>Photoshopで開いた際、カラープロファイルの確認ダイアログが出たら<br>
+        <strong>「埋め込みプロファイルを使用（ProPhoto RGB）」</strong> を選択</li>
+  </ol>
+
+  <div class="alert alert-info" style="margin-top:16px;">
+    <strong>ヒント：</strong> Lightroom Classic は ProPhoto RGB（内部的にはMelissa RGB）を標準として使用しているため、TIFFを直接インポートするだけでそのまま正しく扱われます。
+  </div>
+</div>
+
+<!-- ── FAQ ────────────────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-title">よくある質問</div>
+
+  <div style="margin-top:12px;">
+
+    <details style="margin-bottom:16px; cursor:pointer;">
+      <summary style="font-weight:600; padding:8px 0;">eleはRAW現像ソフトですか？</summary>
+      <p style="font-size:14px; color:var(--text-2); padding:8px 0 0 12px;">
+        違います。eleは<strong>前処理エンジン</strong>です。JPEGやAI画像の圧縮ノイズを除去・階調を再構築し、LightroomやPhotoshopで編集しやすい16-bit TIFFマスターを生成します。現像・色調整・レタッチはお使いの編集ソフトで行ってください。
+      </p>
+    </details>
+
+    <details style="margin-bottom:16px; cursor:pointer;">
+      <summary style="font-weight:600; padding:8px 0;">AI生成画像（Midjourney・Soraなど）に使えますか？</summary>
+      <p style="font-size:14px; color:var(--text-2); padding:8px 0 0 12px;">
+        はい、対応しています。AI生成画像はJPEGやPNGで出力されることが多く、印刷や高解像度用途に使うにはele経由でTIFF化することで編集の幅が広がります。Printモードの超解像（×4・×6）はAI画像との相性が特に良いです。
+      </p>
+    </details>
+
+    <details style="margin-bottom:16px; cursor:pointer;">
+      <summary style="font-weight:600; padding:8px 0;">クレジットはいつ消費されますか？</summary>
+      <p style="font-size:14px; color:var(--text-2); padding:8px 0 0 12px;">
+        エクスポート（ダウンロード）時に消費されます。アップロードや処理中には消費されません。Preview &amp; Target Exportの場合もダウンロードを実行した時点で消費されます。
+      </p>
+    </details>
+
+    <details style="margin-bottom:16px; cursor:pointer;">
+      <summary style="font-weight:600; padding:8px 0;">アップロードした画像はサーバーに保存されますか？</summary>
+      <p style="font-size:14px; color:var(--text-2); padding:8px 0 0 12px;">
+        処理完了後に削除されます。長期保存はしません。詳細は<a href="/privacy">プライバシーポリシー</a>をご確認ください。
+      </p>
+    </details>
+
+    <details style="cursor:pointer;">
+      <summary style="font-weight:600; padding:8px 0;">クレジットの有効期限はありますか？</summary>
+      <p style="font-size:14px; color:var(--text-2); padding:8px 0 0 12px;">
+        ありません。購入したCreator Creditsは期限なく使用できます。
+      </p>
+    </details>
+
+  </div>
+</div>
+
+<div style="text-align:center; padding:20px 0;">
+  <a href="/" class="btn btn-primary btn-lg">さっそく使ってみる</a>
+  &nbsp;
+  <a href="/pricing" class="btn btn-secondary btn-lg">料金を確認する</a>
+</div>
+
+{% endblock %}
