@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}お問い合わせ — ele{% endblock %}
+
+{% block content %}
+
+<div class="hero">
+  <h1>お問い合わせ</h1>
+  <p class="lead">ご質問・ご要望・不具合の報告などは以下のメールアドレスまでご連絡ください。</p>
+</div>
+
+<div class="card" style="max-width:600px;">
+
+  <div style="margin-bottom:28px;">
+    <div style="font-size:13px; color:var(--text-2); margin-bottom:6px;">メールアドレス</div>
+    <div style="font-size:16px; font-weight:600;">
+      <a href="mailto:hirokikamanoi@gmail.com" style="color:var(--text);">hirokikamanoi@gmail.com</a>
+    </div>
+  </div>
+
+  <div style="margin-bottom:28px;">
+    <div style="font-size:13px; color:var(--text-2); margin-bottom:6px;">運営者</div>
+    <div style="font-size:14px;">釜野井 弘規（Hiroki Kamanoi）</div>
+  </div>
+
+  <div style="margin-bottom:28px;">
+    <div style="font-size:13px; color:var(--text-2); margin-bottom:6px;">対応言語</div>
+    <div style="font-size:14px;">日本語・English</div>
+  </div>
+
+  <div>
+    <div style="font-size:13px; color:var(--text-2); margin-bottom:6px;">返信目安</div>
+    <div style="font-size:14px;">2〜3営業日以内</div>
+  </div>
+
+</div>
+
+<div class="card" style="max-width:600px;">
+  <div class="card-title">お問い合わせの種類</div>
+
+  <ul style="font-size:14px; color:var(--text-2); line-height:2; padding-left:20px; margin-top:12px;">
+    <li>返金・支払いに関するお問い合わせ</li>
+    <li>クレジット・プランに関するご質問</li>
+    <li>処理結果・出力品質についてのご意見</li>
+    <li>アカウントの削除依頼</li>
+    <li>不具合・エラーの報告</li>
+    <li>機能のご要望・フィードバック</li>
+    <li>その他</li>
+  </ul>
+
+  <p style="font-size:13px; color:var(--text-2); margin-top:16px;">
+    返金に関するご連絡の際は、件名に「返金依頼」とご記入のうえ、ご購入日とご登録メールアドレスをお知らせください。
+  </p>
+</div>
+
+{% endblock %}

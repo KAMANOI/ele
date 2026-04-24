@@ -62,6 +62,11 @@ def tokushoho_page(request: Request, db: Session = Depends(get_db)) -> HTMLRespo
     return _render(request, "tokushoho.html", _base_ctx(request, db))
 
 
+@router.get("/contact", response_class=HTMLResponse)
+def contact_page(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
+    return _render(request, "contact.html", _base_ctx(request, db))
+
+
 @router.get("/health")
 def health() -> dict:
     return {"status": "ok", "app": "ele", "version": "0.1.0"}
