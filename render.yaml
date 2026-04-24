@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: ele
+    env: docker
+    dockerfilePath: ./Dockerfile
+    # Environment variables are managed in the Render dashboard.
+    # See .env.example for the full list of required keys.

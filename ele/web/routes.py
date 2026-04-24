@@ -15,6 +15,7 @@ from ele.billing.auth import get_current_user_from_session
 from ele.billing.db import get_db
 from ele.billing import services as billing_svc
 from ele.web import services
+from ele.web.scanner import scan_file
 
 log = logging.getLogger(__name__)
 
@@ -127,6 +128,14 @@ async def upload(
     job_id      = services.new_job_id()
     data        = await file.read()
     upload_path = services.save_upload(data, fname, job_id)
+
+    # ── Malware scan (ClamAV) ─────────────────────────────────────────────
+    is_clean, scan_reason = scan_file(upload_path)
+    if not is_clean:
+        log.warning("[%s] Upload rejected by AV scan: %s", job_id, scan_reason)
+        ctx = _base_ctx(request, db)
+        ctx["error"] = "アップロードされたファイルでマルウェアが検出されました。別のファイルをお試しください。"
+        return _render(request, "index.html", ctx, status_code=400)
 
     state = services.init_job_state(job_id, fname, mode, flow)
     state["upload_path"] = str(upload_path)
