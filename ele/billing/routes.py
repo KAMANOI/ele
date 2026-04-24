@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from collections import defaultdict
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -29,6 +30,43 @@ from ele.billing.models import AmbassadorKey, DiscountCode
 log = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# ---------------------------------------------------------------------------
+# Login rate limiting — in-memory, per IP address
+# Max 10 failures per 15-minute window. Satisfies Stripe security requirement #6.
+# ---------------------------------------------------------------------------
+
+_RATE_LIMIT_MAX      = 10          # max failed attempts
+_RATE_LIMIT_WINDOW   = timedelta(minutes=15)
+_RATE_LIMIT_LOCKOUT  = timedelta(minutes=15)
+
+# { ip: [datetime, ...] }  — stores timestamps of failed attempts
+_failed_attempts: dict[str, list[datetime]] = defaultdict(list)
+
+
+def _client_ip(request: Request) -> str:
+    """Return the client IP, respecting X-Forwarded-For from Render's proxy."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _is_rate_limited(ip: str) -> bool:
+    """Return True if this IP has exceeded the failed-login threshold."""
+    now = datetime.utcnow()
+    cutoff = now - _RATE_LIMIT_WINDOW
+    # Evict old entries
+    _failed_attempts[ip] = [t for t in _failed_attempts[ip] if t > cutoff]
+    return len(_failed_attempts[ip]) >= _RATE_LIMIT_MAX
+
+
+def _record_failure(ip: str) -> None:
+    _failed_attempts[ip].append(datetime.utcnow())
+
+
+def _clear_failures(ip: str) -> None:
+    _failed_attempts.pop(ip, None)
 
 _TEMPLATES_DIR = Path(__file__).parent.parent / "web" / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
@@ -76,14 +114,28 @@ async def login_post(
     next_url: Annotated[str, Form()] = "",
     db:       Session = Depends(get_db),
 ) -> RedirectResponse | HTMLResponse:
+    ip = _client_ip(request)
+
+    if _is_rate_limited(ip):
+        log.warning("Login rate limit exceeded for IP %s", ip)
+        return _render(request, "login.html", {
+            "user":     None,
+            "error":    "ログイン試行回数の上限に達しました。15分後に再試行してください。",
+            "email":    email,
+            "next_url": next_url,
+        }, status_code=429)
+
     user = authenticate_user(db, email, password)
     if not user:
+        _record_failure(ip)
         return _render(request, "login.html", {
             "user":     None,
             "error":    "Invalid email or password.",
             "email":    email,
             "next_url": next_url,
         }, status_code=401)
+
+    _clear_failures(ip)
     login_session(request, user)
     return RedirectResponse(next_url or "/account", status_code=303)
 
@@ -103,7 +155,17 @@ async def signup_post(
     password: Annotated[str, Form()],
     db:       Session = Depends(get_db),
 ) -> RedirectResponse | HTMLResponse:
+    ip = _client_ip(request)
+
+    if _is_rate_limited(ip):
+        return _render(request, "signup.html", {
+            "user":  None,
+            "error": "試行回数の上限に達しました。15分後に再試行してください。",
+            "email": email,
+        }, status_code=429)
+
     if len(password) < 8:
+        _record_failure(ip)
         return _render(request, "signup.html", {
             "user":  None,
             "error": "Password must be at least 8 characters.",
