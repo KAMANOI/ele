@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}管理者2FAセットアップ — ele{% endblock %}
+
+{% block content %}
+<div class="hero">
+  <h1>管理者 2FA セットアップ</h1>
+  <p class="lead">Google Authenticator または Authy でスキャンしてください。</p>
+</div>
+
+<div class="card" style="max-width:560px;">
+  <div class="card-title">TOTP シークレットキー</div>
+
+  <p style="font-size:13px; color:var(--text-2); margin-bottom:16px;">
+    以下のシークレットキーをAuthenticatorアプリに手動入力、またはQRコードリンクを開いて登録してください。
+  </p>
+
+  <div style="background:var(--surface-2); border-radius:8px; padding:16px; font-family:monospace;
+              font-size:18px; letter-spacing:0.2em; text-align:center; margin-bottom:20px;
+              word-break:break-all;">
+    {{ totp_secret }}
+  </div>
+
+  <p style="font-size:13px; color:var(--text-2); margin-bottom:8px;">
+    QRコードを使う場合（ブラウザでこのリンクを開く）:
+  </p>
+  <div style="background:var(--surface-2); border-radius:8px; padding:12px;
+              font-size:11px; word-break:break-all; font-family:monospace; margin-bottom:20px;">
+    {{ provisioning_uri }}
+  </div>
+
+  <div style="border-top:1px solid var(--border); padding-top:16px; margin-top:8px;">
+    <p style="font-size:13px; color:var(--text-2); margin-bottom:8px;">現在の認証コード（動作確認用）:</p>
+    <div style="font-size:28px; font-family:monospace; letter-spacing:0.3em; font-weight:700;
+                color:var(--text);">
+      {{ current_code }}
+    </div>
+    <p style="font-size:11px; color:var(--text-2); margin-top:6px;">※ 30秒ごとに更新されます</p>
+  </div>
+</div>
+
+<div class="card" style="max-width:560px;">
+  <div class="card-title">Renderに追加する環境変数</div>
+  <p style="font-size:13px; color:var(--text-2); margin-bottom:12px;">
+    以下の値をRenderダッシュボードのEnvironmentに追加してください。
+  </p>
+  <table style="width:100%; font-size:13px; border-collapse:collapse;">
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:10px 8px; color:var(--text-2); white-space:nowrap;">ADMIN_TOTP_SECRET</td>
+      <td style="padding:10px 8px; font-family:monospace; word-break:break-all;">{{ totp_secret }}</td>
+    </tr>
+    <tr>
+      <td style="padding:10px 8px; color:var(--text-2);">ADMIN_PASSWORD</td>
+      <td style="padding:10px 8px; font-family:monospace; color:var(--text-2);">（任意のパスワードを設定）</td>
+    </tr>
+  </table>
+</div>
+{% endblock %}

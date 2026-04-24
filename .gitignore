@@ -11,3 +11,4 @@ venv/
 *.dng
 !tests/fixtures/**
 .DS_Store
+.db

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}管理者ログイン — ele{% endblock %}
+
+{% block content %}
+<div class="hero">
+  <h1>管理者ログイン</h1>
+</div>
+
+<div class="card" style="max-width:400px;">
+
+  {% if error %}
+  <div class="alert alert-error" style="margin-bottom:20px;">{{ error }}</div>
+  {% endif %}
+
+  {% if locked %}
+  <div class="alert alert-error" style="margin-bottom:20px;">
+    ログイン試行回数の上限に達しました。15分後に再試行してください。
+  </div>
+  {% else %}
+  <form method="post" action="/admin/login">
+
+    <div style="margin-bottom:16px;">
+      <label style="display:block; font-size:13px; color:var(--text-2); margin-bottom:6px;">パスワード</label>
+      <input type="password" name="password" required autofocus
+             class="text-input" style="width:100%;" placeholder="Admin password">
+    </div>
+
+    <div style="margin-bottom:24px;">
+      <label style="display:block; font-size:13px; color:var(--text-2); margin-bottom:6px;">
+        認証コード（Google Authenticator 等）
+      </label>
+      <input type="text" name="totp_code" required
+             class="text-input" style="width:100%; letter-spacing:0.15em;"
+             placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="width:100%;">ログイン</button>
+  </form>
+  {% endif %}
+
+</div>
+{% endblock %}

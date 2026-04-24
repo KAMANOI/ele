@@ -445,19 +445,122 @@ def billing_cancel(
 
 
 # ---------------------------------------------------------------------------
-# Admin — token-protected key/code management page
+# Admin — 2FA login (password + TOTP) + account lockout
 # ---------------------------------------------------------------------------
+
+# Track failed admin login attempts per IP (max 10, then 15-min lockout)
+_admin_failures: dict[str, list[datetime]] = defaultdict(list)
+_ADMIN_MAX_FAILURES = 10
+_ADMIN_LOCKOUT      = timedelta(minutes=15)
+
+
+def _admin_is_locked(ip: str) -> bool:
+    now    = datetime.utcnow()
+    cutoff = now - _ADMIN_LOCKOUT
+    _admin_failures[ip] = [t for t in _admin_failures[ip] if t > cutoff]
+    return len(_admin_failures[ip]) >= _ADMIN_MAX_FAILURES
+
+
+def _admin_record_failure(ip: str) -> None:
+    _admin_failures[ip].append(datetime.utcnow())
+
+
+def _admin_clear(ip: str) -> None:
+    _admin_failures.pop(ip, None)
+
+
+def _admin_authenticated(request: Request) -> bool:
+    return request.session.get("admin_auth") is True
+
+
+@router.get("/admin/login", response_class=HTMLResponse)
+def admin_login_page(request: Request) -> HTMLResponse:
+    if _admin_authenticated(request):
+        return RedirectResponse("/admin/keys", status_code=302)
+    ip = _client_ip(request)
+    return _render(request, "admin_login.html", {
+        "user":   None,
+        "locked": _admin_is_locked(ip),
+        "error":  None,
+    })
+
+
+@router.post("/admin/login", response_model=None)
+async def admin_login_post(
+    request:   Request,
+    password:  Annotated[str, Form()],
+    totp_code: Annotated[str, Form()],
+) -> RedirectResponse | HTMLResponse:
+    import pyotp
+
+    cfg = get_config()
+    ip  = _client_ip(request)
+
+    if _admin_is_locked(ip):
+        return _render(request, "admin_login.html", {
+            "user": None, "locked": True, "error": None,
+        }, status_code=429)
+
+    # Verify password
+    password_ok = cfg.admin_password and password == cfg.admin_password
+
+    # Verify TOTP
+    totp_ok = False
+    if cfg.admin_totp_secret and totp_code.strip():
+        totp = pyotp.TOTP(cfg.admin_totp_secret)
+        totp_ok = totp.verify(totp_code.strip(), valid_window=1)
+
+    if not (password_ok and totp_ok):
+        _admin_record_failure(ip)
+        remaining = _ADMIN_MAX_FAILURES - len(_admin_failures[ip])
+        log.warning("Admin login failed for IP %s (remaining attempts: %d)", ip, max(remaining, 0))
+        return _render(request, "admin_login.html", {
+            "user":   None,
+            "locked": _admin_is_locked(ip),
+            "error":  f"認証に失敗しました。残り試行回数: {max(remaining, 0)}",
+        }, status_code=401)
+
+    _admin_clear(ip)
+    request.session["admin_auth"] = True
+    log.info("Admin login successful from IP %s", ip)
+    return RedirectResponse("/admin/keys", status_code=303)
+
+
+@router.post("/admin/logout")
+async def admin_logout(request: Request) -> RedirectResponse:
+    request.session.pop("admin_auth", None)
+    return RedirectResponse("/admin/login", status_code=303)
+
+
+@router.get("/admin/setup", response_class=HTMLResponse)
+def admin_setup_page(request: Request) -> HTMLResponse:
+    """One-time TOTP setup page. Protected by ADMIN_TOKEN query param."""
+    import pyotp
+
+    cfg   = get_config()
+    token = request.query_params.get("token", "")
+    if not cfg.admin_token or token != cfg.admin_token:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    secret = cfg.admin_totp_secret or pyotp.random_base32()
+    totp   = pyotp.TOTP(secret)
+    uri    = totp.provisioning_uri(name="admin", issuer_name="ele")
+
+    return _render(request, "admin_setup.html", {
+        "user":             None,
+        "totp_secret":      secret,
+        "provisioning_uri": uri,
+        "current_code":     totp.now(),
+    })
+
 
 @router.get("/admin/keys", response_class=HTMLResponse)
 def admin_keys_page(
     request: Request,
     db:      Session = Depends(get_db),
 ) -> HTMLResponse:
-    cfg   = get_config()
-    token = request.query_params.get("token", "")
-
-    if not cfg.admin_token or token != cfg.admin_token:
-        raise HTTPException(status_code=403, detail="Forbidden")
+    if not _admin_authenticated(request):
+        return RedirectResponse("/admin/login", status_code=302)
 
     keys  = db.query(AmbassadorKey).order_by(AmbassadorKey.created_at.desc()).all()
     codes = db.query(DiscountCode).order_by(DiscountCode.created_at.desc()).all()
@@ -466,5 +569,5 @@ def admin_keys_page(
         "user":  get_current_user_from_session(request, db),
         "keys":  keys,
         "codes": codes,
-        "token": token,
+        "token": "",
     })

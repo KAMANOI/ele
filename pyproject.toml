@@ -25,6 +25,7 @@ dependencies = [
     "bcrypt>=4.0",
     "python-dotenv>=1.0",
     "itsdangerous>=2.1",
+    "pyotp>=2.9",
 ]
 
 [project.optional-dependencies]

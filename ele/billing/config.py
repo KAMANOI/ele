@@ -32,8 +32,11 @@ class BillingConfig:
     session_secret: str = os.environ.get("SESSION_SECRET", "change-this-in-production-please")
     database_url:   str = os.environ.get("DATABASE_URL", "sqlite:///./storage/ele.db")
 
-    # Admin — simple token for the /admin/keys page (no token = page disabled)
-    admin_token: str = os.environ.get("ADMIN_TOKEN", "")
+    # Admin — 2FA login (password + TOTP).
+    # ADMIN_TOKEN is kept only for the one-time /admin/setup bootstrap page.
+    admin_token:       str = os.environ.get("ADMIN_TOKEN", "")
+    admin_password:    str = os.environ.get("ADMIN_PASSWORD", "")
+    admin_totp_secret: str = os.environ.get("ADMIN_TOTP_SECRET", "")
 
 
 @lru_cache(maxsize=1)
