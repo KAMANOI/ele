@@ -73,9 +73,21 @@
     <a href="/pricing" class="btn btn-secondary">Upgrade to Pro</a>
     {% endif %}
     {% if user.plan_type == "pro" %}
-    <a href="/pricing" class="btn btn-secondary">Manage plan</a>
+    <form action="/billing/portal" method="post" style="display:inline;">
+      <button type="submit" class="btn btn-secondary">
+        Manage / Cancel Subscription
+      </button>
+    </form>
     {% endif %}
   </div>
+
+  {% if user.plan_type == "pro" %}
+  <p style="font-size:13px; color:var(--text-2); margin-top:14px;">
+    サブスクリプションのキャンセル・請求書の確認・支払い方法の変更は
+    「Manage / Cancel Subscription」から行えます。
+    解約後も当該月の請求期間終了日までご利用いただけます。
+  </p>
+  {% endif %}
 </div>
 
 

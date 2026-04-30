@@ -423,6 +423,43 @@ async def stripe_webhook(
 # Billing success / cancel
 # ---------------------------------------------------------------------------
 
+@router.post("/billing/portal", response_model=None)
+async def billing_portal(
+    request: Request,
+    db:      Session = Depends(get_db),
+) -> RedirectResponse | HTMLResponse:
+    """Redirect the current Pro user to the Stripe Billing Portal.
+
+    The portal lets users cancel their subscription, download invoices,
+    and update their payment method — no support contact required.
+    """
+    user = get_current_user_from_session(request, db)
+    if not user:
+        return RedirectResponse("/login?next=/account", status_code=303)
+
+    if not user.stripe_customer_id:
+        return _render(request, "account.html", {
+            "user":   user,
+            "ledger": svc.get_recent_ledger(db, user),
+            "error":  "Stripe customer record not found. Please contact support.",
+        }, status_code=400)
+
+    try:
+        portal_url = stripe_service.create_billing_portal_session(user)
+    except stripe.StripeError as exc:
+        log.error("Stripe billing portal error for user#%d: %s", user.id, exc)
+        return _render(request, "account.html", {
+            "user":   user,
+            "ledger": svc.get_recent_ledger(db, user),
+            "error":  (
+                "サブスクリプション管理ページを開けませんでした。"
+                "サポート（hirokikamanoi@gmail.com）にお問い合わせください。"
+            ),
+        }, status_code=500)
+
+    return RedirectResponse(portal_url, status_code=303)
+
+
 @router.get("/billing/success", response_class=HTMLResponse)
 def billing_success(
     request: Request,

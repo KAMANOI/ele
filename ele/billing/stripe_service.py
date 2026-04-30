@@ -281,6 +281,21 @@ def handle_invoice_payment_failed(db: Session, event: dict) -> None:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+def create_billing_portal_session(user: User) -> str:
+    """Create a Stripe Billing Portal session and return its redirect URL.
+
+    The Billing Portal lets subscribers manage and cancel their subscription
+    without contacting support. Requires the portal to be configured at
+    https://dashboard.stripe.com/settings/billing/portal
+    """
+    cfg = get_config()
+    session = stripe.billing_portal.Session.create(
+        customer=user.stripe_customer_id,
+        return_url=f"{cfg.app_base_url}/account",
+    )
+    return session.url
+
+
 def _resolve_pack_key(price_id: str) -> str:
     """Map a Stripe price ID to a local credit pack key."""
     cfg = get_config()
