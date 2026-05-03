@@ -44,7 +44,13 @@ app = FastAPI(
 )
 
 # Session middleware — must be added before routes that use request.session
-app.add_middleware(SessionMiddleware, secret_key=cfg.session_secret)
+import os as _os
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=cfg.session_secret,
+    same_site="lax",
+    https_only=_os.getenv("RENDER", "") != "",  # enforce HTTPS only on Render (production)
+)
 
 # Ensure storage directories and DB tables exist on startup
 ensure_storage()

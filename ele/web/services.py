@@ -76,6 +76,19 @@ def ensure_storage() -> None:
         d.mkdir(parents=True, exist_ok=True)
 
 
+def cleanup_old_uploads(max_age_hours: int = 24) -> None:
+    """Delete upload files older than max_age_hours to honour privacy policy."""
+    import time
+    cutoff = time.time() - max_age_hours * 3600
+    for f in UPLOADS_DIR.glob("*"):
+        if f.is_file() and f.stat().st_mtime < cutoff:
+            try:
+                f.unlink()
+                log.info("Cleaned up old upload: %s", f.name)
+            except Exception as exc:
+                log.warning("Failed to clean up upload %s: %s", f.name, exc)
+
+
 # ---------------------------------------------------------------------------
 # Job state
 # ---------------------------------------------------------------------------

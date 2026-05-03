@@ -98,6 +98,7 @@ async def upload(
 ) -> RedirectResponse | HTMLResponse:
 
     services.ensure_storage()
+    services.cleanup_old_uploads()
     user = get_current_user_from_session(request, db)
 
     # ── Validate extension ────────────────────────────────────────────────
@@ -150,11 +151,12 @@ async def upload(
             print_style=print_style if mode == "print" else "natural",
         )
     except Exception as exc:
+        log.error("[%s] Pipeline error: %s", job_id, exc, exc_info=True)
         state["status"] = "error"
-        state["error"]  = str(exc)
+        state["error"]  = "Processing failed. Please try again."
         services.save_job_state(job_id, state)
         ctx = _base_ctx(request, db)
-        ctx["error"] = f"Processing failed: {exc}"
+        ctx["error"] = "処理に失敗しました。時間をおいて再度お試しください。"
         return _render(request, "index.html", ctx, status_code=500)
 
     # ── Consume credits after successful export ───────────────────────────
@@ -441,7 +443,7 @@ def _access_denied_response(
     if reason == "insufficient_credits":
         ctx = _base_ctx(request, db)
         ctx.update({
-            "error":       "Not enough credits to export. Buy more on the pricing page.",
+            "error":       "クレジットが不足しています。料金ページでクレジットを購入してください。",
             "access_warn": "insufficient_credits",
         })
         return _render(request, "index.html", ctx, status_code=402)
