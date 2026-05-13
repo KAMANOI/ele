@@ -41,7 +41,11 @@
       <input type="file" name="file" id="file-input"
              accept=".jpg,.jpeg,.png,.tif,.tiff" required
              onchange="onFileChange(this)">
-      <span class="drop-icon">⬆</span>
+      <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
       <div class="drop-text">Drop image here or click to browse</div>
       <div class="drop-hint">JPEG &middot; PNG &middot; TIFF</div>
       <div class="file-chosen" id="file-chosen" style="display:none"></div>
@@ -73,6 +77,11 @@
         <strong>Print</strong>
         <small>Super resolution &middot; ×2 / ×4 / ×6</small>
       </label>
+      <label class="radio-card" id="mode-print-plus">
+        <input type="radio" name="mode" value="print_plus" onchange="onModeChange(this)">
+        <strong>Print+</strong>
+        <small>Clarity Upscaler &middot; Quality / Large / Ultra</small>
+      </label>
     </div>
 
     <!-- Print scale (shown only for print mode) -->
@@ -82,6 +91,16 @@
         <option value="2">&times;2 &mdash; double resolution</option>
         <option value="4">&times;4 &mdash; large format</option>
         <option value="6">&times;6 &mdash; billboard / fine art</option>
+      </select>
+    </div>
+
+    <!-- Print+ tier (shown only for print_plus mode) -->
+    <div class="field-group" id="print-plus-tier-group" style="display:none; margin-top:18px">
+      <label class="field-label">Print+ Tier</label>
+      <select name="print_plus_tier">
+        <option value="quality">Quality &mdash; &times;2 upscale &middot; 3 credits &middot; ~15 s</option>
+        <option value="large">Large &mdash; &times;4 upscale &middot; 4 credits &middot; ~15 s</option>
+        <option value="ultra">Ultra &mdash; &times;8 upscale (2-pass) &middot; 6 credits &middot; ~30 s</option>
       </select>
     </div>
   </div>
@@ -124,6 +143,8 @@ function onModeChange(radio) {
   radio.closest('.radio-card').classList.add('checked');
   document.getElementById('print-scale-group').style.display =
     radio.value === 'print' ? 'block' : 'none';
+  document.getElementById('print-plus-tier-group').style.display =
+    radio.value === 'print_plus' ? 'block' : 'none';
 }
 
 function onFlowChange(radio) {

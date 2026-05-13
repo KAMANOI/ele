@@ -52,6 +52,7 @@ EXPORT_TARGETS: dict[str, dict[str, str]] = {
     "captureone": {"label": "Capture One",  "sub": "16-bit TIFF · ProPhoto RGB"},
     "adobe_dng":  {"label": "Adobe DNG",    "sub": "Linear DNG · planned"},
     "print":      {"label": "Print TIFF",   "sub": "Super resolution · Natural / AI Detail · ×2 / ×4 / ×6"},
+    "print_plus": {"label": "Print+ TIFF",  "sub": "Clarity Upscaler · Quality ×2 / Large ×4 / Ultra ×8"},
 }
 
 _PREVIEW_MAX = 1200   # max long edge for browser JPEG previews — NEVER used for export
@@ -60,10 +61,11 @@ _PREVIEW_MAX = 1200   # max long edge for browser JPEG previews — NEVER used f
 # If a pipeline produces output smaller than this AND the input was bigger,
 # it is a bug.  The sanity check in run_pipeline will raise.
 _MIN_EXPORT_LONG_EDGE: dict[str, int] = {
-    "free":    1,     # input may genuinely be tiny
-    "creator": 1,     # same
-    "pro":     1,
-    "print":   1,
+    "free":        1,
+    "creator":     1,
+    "pro":         1,
+    "print":       1,
+    "print_plus":  1,
 }
 # Threshold below which an output is "suspiciously preview-sized".
 # If the export long-edge is <= this AND the original was larger, raise.
@@ -183,6 +185,7 @@ def run_pipeline(
     job_id: str,
     print_scale: int | None = None,
     print_style: str = "natural",
+    print_plus_tier: str = "quality",
 ) -> tuple[str, dict, dict, str]:
     """Run the pipeline for *mode*.
 
@@ -206,6 +209,8 @@ def run_pipeline(
         _scale     = print_scale or 2
         _style_tag = "aidetail" if print_style == "ai-detail" else "natural"
         output_path = OUTPUTS_DIR / f"{job_id}_print_x{_scale}_{_style_tag}_master.tiff"
+    elif mode == "print_plus":
+        output_path = OUTPUTS_DIR / f"{job_id}_print_plus_{print_plus_tier}_master.tiff"
     else:
         output_path = OUTPUTS_DIR / f"{job_id}_master.tiff"
 
@@ -219,10 +224,11 @@ def run_pipeline(
         in_long_edge = 0
 
     log.info(
-        "[%s] pipeline START  mode=%s  scale=%s  style=%s  input=%s  upload=%s  output=%s",
+        "[%s] pipeline START  mode=%s  scale=%s  style=%s  tier=%s  input=%s  upload=%s  output=%s",
         job_id, mode,
         print_scale if mode == "print" else "-",
         print_style if mode == "print" else "-",
+        print_plus_tier if mode == "print_plus" else "-",
         input_size_str, upload_path.name, output_path.name,
     )
 
@@ -233,6 +239,43 @@ def run_pipeline(
         output_path=str(output_path),
         _progress_cb=_cb,
     )
+
+    if mode == "print_plus":
+        from ele.pipeline.print_plus_pipeline import run_print_plus_pipeline
+        run_print_plus_pipeline(
+            input_path=str(upload_path),
+            output_path=str(output_path),
+            tier=print_plus_tier,
+        )
+        dims = image_dims(output_path)
+        exp_w, exp_h = dims if dims else (0, 0)
+        exp_long_edge = max(exp_w, exp_h)
+        export_size_str = f"{exp_w}x{exp_h}"
+
+        log.info(
+            "[%s] pipeline END  mode=%s  export_master=%s  dims=%s  size_kb=%d",
+            job_id, mode, output_path.name, export_size_str,
+            output_path.stat().st_size // 1024 if output_path.exists() else -1,
+        )
+        log.info(
+            "[%s] quick_export mode=%s export_w=%d export_h=%d master=%s",
+            job_id, mode, exp_w, exp_h, output_path.name,
+        )
+
+        report_dict: dict[str, Any] = {
+            "compression_score":   0.0,
+            "clipping_score":      0.0,
+            "sharpness_score":     0.0,
+            "noise_score":         0.0,
+            "dynamic_range_score": 0.0,
+            "notes":               [],
+        }
+        metadata_dict = {
+            "mode": "print_plus",
+            "tier": print_plus_tier,
+            "export_size": export_size_str,
+        }
+        return str(output_path), report_dict, metadata_dict, input_size_str
 
     if mode == "free":
         from ele.pipeline.free_pipeline import run_free_pipeline
@@ -463,6 +506,29 @@ def apply_export_target(
         except Exception as exc:
             return None, f"Print pipeline error: {exc}"
 
+    if target == "print_plus":
+        tier = state.get("print_plus_tier", "quality")
+        output_path = str(
+            OUTPUTS_DIR / f"{job_id}_print_plus_{tier}_master.tiff"
+        )
+        try:
+            from ele.pipeline.print_plus_pipeline import run_print_plus_pipeline
+            run_print_plus_pipeline(
+                input_path=upload_path,
+                output_path=output_path,
+                tier=tier,
+            )
+            try:
+                _, proc_url = create_previews(
+                    job_id, Path(upload_path), Path(output_path)
+                )
+                state["preview_processed"] = proc_url
+            except Exception:
+                pass
+            return output_path, None
+        except Exception as exc:
+            return None, f"Print+ pipeline error: {exc}"
+
     return None, f"Unknown export target: {target!r}"
 
 
@@ -470,12 +536,16 @@ def download_filename(state: dict[str, Any]) -> str:
     """Generate a sensible download filename."""
     stem   = Path(state.get("original_filename", "output")).stem
     target = state.get("export_target")
+    mode   = state.get("mode")
     suffix = ""
     if target == "print":
         scale  = state.get("print_scale") or 2
         pstyle = state.get("print_style", "natural")
         style_tag = "aidetail" if pstyle == "ai-detail" else "natural"
         suffix = f"_print_x{scale}_{style_tag}"
+    elif target == "print_plus" or mode == "print_plus":
+        tier = state.get("print_plus_tier", "quality")
+        suffix = f"_print_plus_{tier}"
     return f"{stem}_ele{suffix}.tiff"
 
 

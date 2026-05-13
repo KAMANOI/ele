@@ -88,13 +88,14 @@ def index(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
 
 @router.post("/upload", response_model=None)
 async def upload(
-    request:     Request,
-    file:        Annotated[UploadFile, File()],
-    mode:        Annotated[str, Form()] = "creator",
-    flow:        Annotated[str, Form()] = "quick",
-    print_scale: Annotated[Optional[int], Form()] = None,
-    print_style: Annotated[str, Form()] = "natural",
-    db:          Session = Depends(get_db),
+    request:          Request,
+    file:             Annotated[UploadFile, File()],
+    mode:             Annotated[str, Form()] = "creator",
+    flow:             Annotated[str, Form()] = "quick",
+    print_scale:      Annotated[Optional[int], Form()] = None,
+    print_style:      Annotated[str, Form()] = "natural",
+    print_plus_tier:  Annotated[str, Form()] = "quality",
+    db:               Session = Depends(get_db),
 ) -> RedirectResponse | HTMLResponse:
 
     services.ensure_storage()
@@ -109,7 +110,7 @@ async def upload(
         ctx["error"] = "Unsupported file type. Please upload a JPEG, PNG, or TIFF."
         return _render(request, "index.html", ctx, status_code=400)
 
-    if mode not in ("free", "creator", "pro", "print"):
+    if mode not in ("free", "creator", "pro", "print", "print_plus"):
         ctx = _base_ctx(request, db)
         ctx["error"] = f"Unknown mode: {mode!r}"
         return _render(request, "index.html", ctx, status_code=400)
@@ -119,8 +120,18 @@ async def upload(
         ctx["error"] = f"Unknown print style: {print_style!r}."
         return _render(request, "index.html", ctx, status_code=400)
 
+    if mode == "print_plus" and print_plus_tier not in ("quality", "large", "ultra"):
+        ctx = _base_ctx(request, db)
+        ctx["error"] = f"Unknown Print+ tier: {print_plus_tier!r}."
+        return _render(request, "index.html", ctx, status_code=400)
+
     # ── Access control ────────────────────────────────────────────────────
-    export_kind = "print" if mode == "print" else "standard"
+    if mode == "print":
+        export_kind = "print"
+    elif mode == "print_plus":
+        export_kind = f"print_plus_{print_plus_tier}"
+    else:
+        export_kind = "standard"
     can, reason = billing_svc.can_export(user, export_kind)
     if not can:
         return _access_denied_response(request, db, user, reason)
@@ -149,32 +160,40 @@ async def upload(
             upload_path, mode, job_id,
             print_scale=print_scale if mode == "print" else None,
             print_style=print_style if mode == "print" else "natural",
+            print_plus_tier=print_plus_tier if mode == "print_plus" else "quality",
         )
     except Exception as exc:
         log.error("[%s] Pipeline error: %s", job_id, exc, exc_info=True)
+        err_str = str(exc)
+        # Extract error code (E2xx etc.) from exception message if present
+        import re as _re
+        code_match = _re.search(r"\b(E\d{3})\b", err_str)
+        error_code = code_match.group(1) if code_match else "E999"
         state["status"] = "error"
-        state["error"]  = "Processing failed. Please try again."
+        state["error"]  = f"Processing failed. Please try again. ({error_code})"
         services.save_job_state(job_id, state)
         ctx = _base_ctx(request, db)
-        ctx["error"] = "処理に失敗しました。時間をおいて再度お試しください。"
+        ctx["error"] = f"処理に失敗しました。時間をおいて再度お試しください。\n{error_code}"
         return _render(request, "index.html", ctx, status_code=500)
 
     # ── Consume credits after successful export ───────────────────────────
     if user:
         billing_svc.consume_export_credit(db, user, export_kind, job_id)
 
-    state["output_path"]   = output_path
-    state["report"]        = report
-    state["metadata"]      = metadata
-    state["status"]        = "ready"
-    state["print_scale"]   = print_scale
-    state["print_style"]   = print_style if mode == "print" else None
-    state["input_size"]    = input_size
-    state["export_size"]   = metadata.get("export_size", "")
-    # Tag print quick-exports the same way the preview→export flow does so
-    # download_filename() and the result page can identify the print artifact.
+    state["output_path"]      = output_path
+    state["report"]           = report
+    state["metadata"]         = metadata
+    state["status"]           = "ready"
+    state["print_scale"]      = print_scale
+    state["print_style"]      = print_style if mode == "print" else None
+    state["print_plus_tier"]  = print_plus_tier if mode == "print_plus" else None
+    state["input_size"]       = input_size
+    state["export_size"]      = metadata.get("export_size", "")
+    # Tag print quick-exports so download_filename() and result page can identify them.
     if mode == "print":
         state["export_target"] = "print"
+    elif mode == "print_plus":
+        state["export_target"] = "print_plus"
 
     log.info(
         "[%s] upload done  mode=%s  flow=%s  output_path=%s  export_target=%s",
@@ -182,7 +201,7 @@ async def upload(
     )
 
     # Hard assertion — quick export must not produce preview-sized output
-    if flow == "quick" and mode in {"creator", "pro", "print"}:
+    if flow == "quick" and mode in {"creator", "pro", "print", "print_plus"}:
         try:
             in_parts = input_size.split("x")
             in_long  = max(int(in_parts[0]), int(in_parts[1])) if len(in_parts) == 2 else 0
@@ -201,8 +220,8 @@ async def upload(
                         f"mode={mode!r}  job_id={job_id!r}  "
                         f"input_long_edge={in_long}px  download_long_edge={dl_long}px"
                     )
-                # For print mode: output must be strictly larger than input (upscale verification)
-                if mode == "print" and in_long > 0 and dl_long <= in_long:
+                # For print/print_plus: output must be strictly larger than input
+                if mode in {"print", "print_plus"} and in_long > 0 and dl_long <= in_long:
                     raise RuntimeError(
                         f"Print upscale assertion failed: "
                         f"output long edge ({dl_long}px) must exceed input ({in_long}px). "
@@ -276,7 +295,13 @@ async def export_target(
     user = get_current_user_from_session(request, db)
 
     # ── Access control ────────────────────────────────────────────────────
-    export_kind = "print" if target == "print" else "standard"
+    if target == "print":
+        export_kind = "print"
+    elif target == "print_plus":
+        pp_tier = state.get("print_plus_tier", "quality")
+        export_kind = f"print_plus_{pp_tier}"
+    else:
+        export_kind = "standard"
     can, reason = billing_svc.can_export(user, export_kind)
     if not can:
         return _access_denied_response(request, db, user, reason)

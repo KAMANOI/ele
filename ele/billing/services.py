@@ -10,8 +10,11 @@ from ele.billing.models import CreditLedger, User
 
 # Credits consumed per export kind
 EXPORT_COSTS: dict[str, int] = {
-    "standard": 1,
-    "print":    3,
+    "standard":           1,
+    "print":              3,
+    "print_plus_quality": 3,
+    "print_plus_large":   4,
+    "print_plus_ultra":   6,
 }
 
 _ACTIVE_SUB_STATUSES = {"active", "trialing"}
