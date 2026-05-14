@@ -22,6 +22,7 @@ def run_creator_pipeline(
     input_path: str,
     output_path: str,
     scale: int | None = None,
+    lite_mode: bool = False,
     _progress_cb=None,
 ) -> PipelineResult:
     """Run the creator-tier pipeline.
@@ -30,6 +31,7 @@ def run_creator_pipeline(
         input_path:   Path to input JPEG / PNG / TIFF.
         output_path:  Destination TIFF path.
         scale:        Ignored in creator mode.
+        lite_mode:    If True, skip shoulder/chroma steps for lighter processing.
         _progress_cb: Optional callable(step: int, label: str).
 
     Returns:
@@ -53,7 +55,7 @@ def run_creator_pipeline(
     image, scene_map = reconstruct_scene(image)
 
     cb(5, "pseudo-RAW reconstruction")
-    image = reconstruct_pseudo_raw(image, report, scene_map)
+    image = reconstruct_pseudo_raw(image, report, scene_map, lite_mode=lite_mode)
 
     cb(6, "exporting TIFF")
     metadata = build_metadata("creator", input_path, report, image)

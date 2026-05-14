@@ -3,7 +3,7 @@
 ele's internal working space:
   Primaries : ProPhoto RGB (ROMM RGB, ISO 22028-2)
   White point: D50 (CIE illuminant)
-  Transfer fn: Linear (gamma 1.0)
+  Transfer fn: ROMM RGB (gamma 1.8, ISO 22028-2)
   Precision  : float32 (internally), uint16 at export
 
 ProPhoto RGB uses a much wider colour gamut than sRGB or AdobeRGB,
@@ -20,8 +20,11 @@ ICC profile embedding:
 
 from __future__ import annotations
 
+import logging
 import struct
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 import numpy as np
 
@@ -37,7 +40,7 @@ PROPHOTO_WHITEPOINT = (0.3457, 0.3585)  # D50
 
 PIPELINE_COLOR_PRIMARIES  = "ProPhoto RGB (ROMM RGB)"
 PIPELINE_WHITE_POINT      = "D50"
-PIPELINE_TRANSFER_FUNCTION = "Linear (gamma 1.0)"
+PIPELINE_TRANSFER_FUNCTION = "ROMM RGB (gamma 1.8, ISO 22028-2)"
 PIPELINE_BIT_DEPTH        = 16
 
 # Candidate system ICC profile paths (searched in order)
@@ -94,6 +97,10 @@ def load_prophoto_icc() -> tuple[bytes, str]:
             return p.read_bytes(), f"system ({p})"
 
     # 3. Generated fallback
+    logger.warning(
+        "[ele] No bundled or system ProPhoto ICC found — using generated fallback. "
+        "For best compatibility, add ele/export/profiles/ProPhotoRGB.icc."
+    )
     return _build_minimal_prophoto_icc(), "generated (minimal ICC v2 fallback)"
 
 
@@ -105,7 +112,7 @@ def _build_minimal_prophoto_icc() -> bytes:
     """Build a minimal but valid ProPhoto RGB ICC v2 profile.
 
     Primaries and white point follow ISO 22028-2 (ROMM RGB / ProPhoto RGB).
-    Transfer function: linear (gamma 1.0 = identity).
+    Transfer function: ROMM RGB gamma 1.8 (ICC curv count=1, value=461).
     Profile is self-contained; no external files required.
 
     Matrix columns (ProPhoto RGB → XYZ D50):
@@ -121,9 +128,13 @@ def _build_minimal_prophoto_icc() -> bytes:
     def xyz_tag(x: float, y: float, z: float) -> bytes:
         return b"XYZ " + b"\x00" * 4 + s15f16(x) + s15f16(y) + s15f16(z)
 
-    def curv_linear() -> bytes:
-        """curv tag: count=1, value=256 → gamma 1.0 (linear)."""
-        data = b"curv" + b"\x00" * 4 + struct.pack(">I", 1) + struct.pack(">H", 256)
+    def curv_romm_gamma() -> bytes:
+        """curv tag: count=1, value=461 → gamma 1.8 (ROMM RGB, ISO 22028-2).
+
+        ICC v2 spec: when count=1, the single uint16 encodes gamma as
+        gamma × 256, so 1.8 × 256 = 460.8 → rounded to 461.
+        """
+        data = b"curv" + b"\x00" * 4 + struct.pack(">I", 1) + struct.pack(">H", 461)
         return data + b"\x00" * 2  # pad to 16 bytes
 
     def desc_tag(text: str) -> bytes:
@@ -146,7 +157,7 @@ def _build_minimal_prophoto_icc() -> bytes:
     t_rXYZ = xyz_tag(0.79767, 0.28804, 0.00000)   # ProPhoto R primary → XYZ
     t_gXYZ = xyz_tag(0.13513, 0.71188, 0.00000)   # ProPhoto G primary → XYZ
     t_bXYZ = xyz_tag(0.03140, 0.00008, 0.82480)   # ProPhoto B primary → XYZ
-    t_trc  = curv_linear()                          # shared by rTRC/gTRC/bTRC
+    t_trc  = curv_romm_gamma()                       # shared by rTRC/gTRC/bTRC
 
     # 8 tags: desc wtpt rXYZ gXYZ bXYZ rTRC gTRC bTRC
     N_TAGS = 8
@@ -213,7 +224,7 @@ def build_pipeline_metadata() -> dict[str, str | int]:
         "WhitePoint":           PIPELINE_WHITE_POINT,
         "TransferCharacteristics": PIPELINE_TRANSFER_FUNCTION,
         "BitDepth":             PIPELINE_BIT_DEPTH,
-        "Note":                 "This file is an unrendered linear master.",
+        "Note":                 "ROMM gamma-encoded ProPhoto RGB master. Open in Lightroom/Photoshop with ProPhoto RGB profile.",
     }
 
 

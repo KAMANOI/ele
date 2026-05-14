@@ -186,6 +186,7 @@ def run_pipeline(
     print_scale: int | None = None,
     print_style: str = "natural",
     print_plus_tier: str = "quality",
+    lite_mode: bool = False,
 ) -> tuple[str, dict, dict, str]:
     """Run the pipeline for *mode*.
 
@@ -237,6 +238,7 @@ def run_pipeline(
     common = dict(
         input_path=str(upload_path),
         output_path=str(output_path),
+        lite_mode=lite_mode,
         _progress_cb=_cb,
     )
 

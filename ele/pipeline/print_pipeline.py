@@ -25,6 +25,7 @@ def run_print_pipeline(
     output_path: str,
     scale: int | None = 2,
     print_style: str = "natural",
+    lite_mode: bool = False,
     _progress_cb=None,
 ) -> PipelineResult:
     """Run the print-tier pipeline with super resolution.
@@ -34,6 +35,7 @@ def run_print_pipeline(
         output_path:  Destination TIFF path.
         scale:        Upscale factor (2, 4, or 6).  Defaults to 2.
         print_style:  Upscale style: ``"natural"`` (default) or ``"ai-detail"``.
+        lite_mode:    If True, skip shoulder/chroma steps for lighter processing.
         _progress_cb: Optional callable(step: int, label: str).
 
     Returns:
@@ -61,7 +63,7 @@ def run_print_pipeline(
     image, scene_map = reconstruct_scene(image)
 
     cb(5, "pseudo-RAW reconstruction")
-    image = reconstruct_pseudo_raw(image, report, scene_map)
+    image = reconstruct_pseudo_raw(image, report, scene_map, lite_mode=lite_mode)
 
     cb(5, f"super resolution ×{_scale} [{print_style}]")
     image = upscale_image(image, scale=_scale, mode="print")

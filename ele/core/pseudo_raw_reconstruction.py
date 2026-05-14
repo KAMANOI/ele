@@ -85,6 +85,7 @@ def reconstruct_pseudo_raw(
     image: np.ndarray,
     report: DegradationReport,
     scene_map: SceneMap,
+    lite_mode: bool = False,
 ) -> np.ndarray:
     """Convert a scene-referred image into a pseudo-RAW editable master.
 
@@ -96,11 +97,16 @@ def reconstruct_pseudo_raw(
     3.  Log-luminance tonal reconstruction — shadow lift + highlight pre-compression
         in log₂ exposure space; EV-uniform lift avoids linear patchiness;
         black anchor (BLACK_ANCHOR) protected; replaces prior linear shadow block.
-    3e. Lab-space chroma expansion — low-mid saturation lift, highlight limit, skin protection
-    3f. Local tone compression — large-radius base/detail decomposition; scene-aware per-pixel
-        compression of local contrast; detail/texture protected via gradient gate.
+        In lite_mode: shadow lift reduced to 50%, highlight compression halved.
     4.  Highlight shoulder (quadratic ease-out from _HL_GLOBAL_THRESHOLD=0.74)
+        [skipped in lite_mode]
     4b. Skin-specific earlier highlight rolloff (from _HL_SKIN_THRESHOLD=0.68)
+        [skipped in lite_mode]
+    4c. Lab-space chroma expansion — low-mid saturation lift, highlight limit, skin protection.
+        Runs after step 4 so chroma lift operates on the final tonal range.
+        [skipped in lite_mode]
+    4d. Local tone compression — large-radius base/detail decomposition; scene-aware per-pixel
+        compression of local contrast; detail/texture protected via gradient gate.
     5.  Near-clip saturation safety (relaxed — only genuinely near-clip pixels)
     5b. Warm-hue / skin-orange near-clip safety (relaxed strength)
     6.  Skin shadow chroma stabilisation (prevent cyan/green drift)
@@ -112,10 +118,15 @@ def reconstruct_pseudo_raw(
         image:     H×W×3 float32, linear RGB, values in [0, 1].
         report:    DegradationReport from Stage 1.
         scene_map: SceneMap from Stage 3.
+        lite_mode: If True, skip tonal reshaping (shoulder, chroma expansion) and
+                   reduce shadow lift — preserves the scene's original contrast
+                   for images destined for heavy manual RAW editing.
 
     Returns:
         H×W×3 float32, pseudo-RAW master, values in [0, 1].
     """
+    if lite_mode:
+        logger.info("reconstruct_pseudo_raw: lite_mode=True — shoulder/chroma steps skipped")
     img = image.astype(np.float32)
 
     # 1. Partial WB — luminance-weighted, loosen baked colour casts
@@ -134,21 +145,31 @@ def reconstruct_pseudo_raw(
     #    patchiness that linear additive lifting introduces in mid-shadows.
     logger.info("Log-luminance reconstruction applied")
     Y   = _compute_luminance(img)
-    Y   = _apply_log_tonal_reconstruction(Y)
+    if lite_mode:
+        Y = _apply_log_tonal_reconstruction(
+            Y,
+            shadow_lift=_LOG_SHADOW_LIFT * 0.5,
+            hl_compress=_LOG_HL_COMPRESS * 0.5,
+        )
+    else:
+        Y = _apply_log_tonal_reconstruction(Y)
     img = _recombine_luma_chroma(img, Y)
 
-    # 3e. Color headroom expansion — Lab-space chroma lift, skin-protected
-    img = _apply_color_headroom_expansion(img, scene_map)
+    if not lite_mode:
+        # 4. Highlight shoulder — runs before chroma expansion so that the chroma
+        #    lift operates on the final tonal range; prevents highlight desaturation.
+        Y   = _compute_luminance(img)
+        Y   = _apply_highlight_shoulder(Y)
+        img = _recombine_luma_chroma(img, Y)
+        # 4b. Earlier highlight rolloff in skin regions
+        img = _apply_skin_highlight_rolloff(img, scene_map)
 
-    # 3f. Local tone compression — scene-aware, detail-protected
+        # 4c. Color headroom expansion — Lab-space chroma lift, skin-protected.
+        #     Applied after shoulder so chroma lift does not fight highlight compression.
+        img = _apply_color_headroom_expansion(img, scene_map)
+
+    # 4d. Local tone compression — scene-aware, detail-protected
     img = _apply_local_tone_compression(img, scene_map)
-
-    # 4. Highlight shoulder — quadratic ease-out from _HL_GLOBAL_THRESHOLD
-    Y   = _compute_luminance(img)
-    Y   = _apply_highlight_shoulder(Y)
-    img = _recombine_luma_chroma(img, Y)
-    # 4b. Earlier highlight rolloff in skin regions
-    img = _apply_skin_highlight_rolloff(img, scene_map)
 
     # 5. Near-clip saturation safety — relaxed vs previous version
     img = _apply_near_clip_saturation_safety(img)
@@ -527,7 +548,11 @@ def _log_to_linear_luma(log_Y: np.ndarray) -> np.ndarray:
     return np.exp2(log_Y).astype(np.float32)
 
 
-def _apply_log_tonal_reconstruction(Y: np.ndarray) -> np.ndarray:
+def _apply_log_tonal_reconstruction(
+    Y: np.ndarray,
+    shadow_lift: float = _LOG_SHADOW_LIFT,
+    hl_compress: float = _LOG_HL_COMPRESS,
+) -> np.ndarray:
     """Lift shadows and pre-compress highlights in log₂ exposure space.
 
     Working in log domain means each unit of adjustment is one EV (stop),
@@ -573,13 +598,13 @@ def _apply_log_tonal_reconstruction(Y: np.ndarray) -> np.ndarray:
         span = _LOG_SHADOW_THRESHOLD - log_anchor + 1e-6
         gate = np.clip((log_Y[shadow_mask] - log_anchor) / span, 0.0, 1.0)
 
-        log_Y[shadow_mask] += _LOG_SHADOW_LIFT * gap * gate
+        log_Y[shadow_mask] += shadow_lift * gap * gate
 
     # ── Highlight pre-compression ─────────────────────────────────────────────
     hl_mask = log_Y > _LOG_HL_THRESHOLD
     if hl_mask.any():
         excess = log_Y[hl_mask] - _LOG_HL_THRESHOLD    # positive (stops above floor)
-        log_Y[hl_mask] -= _LOG_HL_COMPRESS * excess
+        log_Y[hl_mask] -= hl_compress * excess
 
     return _log_to_linear_luma(log_Y)
 
@@ -1066,6 +1091,21 @@ def _limit_highlight_chroma(lab: np.ndarray) -> np.ndarray:
     return lab2
 
 
+def _gamut_clip_preserve_hue(rgb: np.ndarray) -> np.ndarray:
+    """Bring out-of-gamut pixels back to [0, 1] while preserving hue.
+
+    Negative values are zeroed first (floor), then any pixel whose maximum
+    channel exceeds 1.0 is scaled uniformly so that max_channel = 1.0.
+    Scaling all channels by the same factor preserves inter-channel ratios
+    (i.e. hue), unlike per-channel clipping which shifts chroma toward
+    primaries and alters hue.
+    """
+    rgb = np.maximum(rgb, 0.0)
+    max_ch = rgb.max(axis=2, keepdims=True)
+    scale = np.where(max_ch > 1.0, 1.0 / np.maximum(max_ch, 1e-8), 1.0)
+    return (rgb * scale).astype(np.float32)
+
+
 def _apply_color_headroom_expansion(
     image: np.ndarray,
     scene_map: SceneMap,
@@ -1078,7 +1118,9 @@ def _apply_color_headroom_expansion(
     2. _expand_chroma_lab  — lift low-mid chroma, skin-protected
     3. _limit_highlight_chroma — clamp chroma near specular/clip zone
     4. Lab → linear RGB
-    5. Clamp to [0, 1] (safe for ProPhoto TIFF export)
+    5. Hue-preserving gamut mapping for out-of-sRGB pixels (scales all channels
+       by 1/max_channel when any channel > 1.0, preserving inter-channel ratios
+       and therefore hue). Negative values are zeroed separately.
 
     Logged once per call: "Color headroom expansion applied".
     """
@@ -1091,7 +1133,7 @@ def _apply_color_headroom_expansion(
     lab = _limit_highlight_chroma(lab)
     rgb = _lab_to_rgb(lab)
 
-    return np.clip(rgb, 0.0, 1.0).astype(np.float32)
+    return _gamut_clip_preserve_hue(rgb)
 
 
 def _apply_highlight_shoulder(

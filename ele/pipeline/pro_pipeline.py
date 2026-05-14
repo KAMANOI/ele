@@ -26,6 +26,7 @@ def run_pro_pipeline(
     input_path: str,
     output_path: str,
     scale: int | None = None,
+    lite_mode: bool = False,
     _progress_cb=None,
 ) -> PipelineResult:
     """Run the pro-tier pipeline.
@@ -35,6 +36,7 @@ def run_pro_pipeline(
         output_path:  Destination path.  .tiff/.tif → 16-bit TIFF.
                       .dng → raises NotImplementedError (planned).
         scale:        Ignored in pro mode.
+        lite_mode:    If True, skip shoulder/chroma steps for lighter processing.
         _progress_cb: Optional callable(step: int, label: str).
 
     Returns:
@@ -58,7 +60,7 @@ def run_pro_pipeline(
     image, scene_map = reconstruct_scene(image)
 
     cb(5, "pseudo-RAW reconstruction")
-    image = reconstruct_pseudo_raw(image, report, scene_map)
+    image = reconstruct_pseudo_raw(image, report, scene_map, lite_mode=lite_mode)
 
     cb(6, "exporting")
     metadata = build_metadata("pro", input_path, report, image)

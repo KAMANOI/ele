@@ -95,6 +95,7 @@ async def upload(
     print_scale:      Annotated[Optional[int], Form()] = None,
     print_style:      Annotated[str, Form()] = "natural",
     print_plus_tier:  Annotated[str, Form()] = "quality",
+    lite_mode:        Annotated[bool, Form()] = False,
     db:               Session = Depends(get_db),
 ) -> RedirectResponse | HTMLResponse:
 
@@ -161,6 +162,7 @@ async def upload(
             print_scale=print_scale if mode == "print" else None,
             print_style=print_style if mode == "print" else "natural",
             print_plus_tier=print_plus_tier if mode == "print_plus" else "quality",
+            lite_mode=lite_mode,
         )
     except Exception as exc:
         log.error("[%s] Pipeline error: %s", job_id, exc, exc_info=True)
@@ -187,6 +189,7 @@ async def upload(
     state["print_scale"]      = print_scale
     state["print_style"]      = print_style if mode == "print" else None
     state["print_plus_tier"]  = print_plus_tier if mode == "print_plus" else None
+    state["lite_mode"]        = lite_mode
     state["input_size"]       = input_size
     state["export_size"]      = metadata.get("export_size", "")
     # Tag print quick-exports so download_filename() and result page can identify them.
