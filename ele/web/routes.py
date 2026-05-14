@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import io
 import logging
+import re
+import zipfile
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated, List, Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
@@ -462,6 +465,157 @@ def download(
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Batch upload
+# ---------------------------------------------------------------------------
+
+_BATCH_MAX_FILES    = 10
+_BATCH_MAX_FILE_MB  = 50
+_BATCH_ALLOWED_MODES = {"creator", "pro"}   # free/print excluded from batch
+
+
+def _sanitize_zip_entry(filename: str) -> str:
+    """Return a safe ZIP entry name: ASCII-safe stem + _ele.tiff."""
+    stem = Path(filename).stem
+    safe = re.sub(r"[^A-Za-z0-9_\-]", "_", stem)
+    return (safe or "output") + "_ele.tiff"
+
+
+@router.get("/batch", response_class=HTMLResponse)
+def batch_page(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
+    return _render(request, "batch.html", _base_ctx(request, db))
+
+
+@router.post("/upload_batch", response_model=None)
+async def upload_batch(
+    request:          Request,
+    files:            Annotated[List[UploadFile], File()],
+    mode:             Annotated[str, Form()] = "creator",
+    lite_mode:        Annotated[bool, Form()] = False,
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    db:               Session = Depends(get_db),
+) -> StreamingResponse | JSONResponse:
+
+    services.ensure_storage()
+    services.cleanup_old_uploads()
+    user = get_current_user_from_session(request, db)
+
+    # ── Validate mode ─────────────────────────────────────────────────────
+    if mode not in _BATCH_ALLOWED_MODES:
+        return JSONResponse({"error": f"Batch processing is available for Creator and Pro modes only.", "code": "E120"}, status_code=400)
+
+    # ── Validate file list ────────────────────────────────────────────────
+    valid_files: list[UploadFile] = []
+    for f in files:
+        if services.validate_extension(f.filename or "") is not None:
+            valid_files.append(f)
+
+    if not valid_files:
+        return JSONResponse({"error": "No supported files found. Please upload JPEG, PNG, or TIFF.", "code": "E121"}, status_code=400)
+
+    if len(valid_files) > _BATCH_MAX_FILES:
+        return JSONResponse({"error": f"Maximum {_BATCH_MAX_FILES} files per batch.", "code": "E122"}, status_code=400)
+
+    n_files = len(valid_files)
+
+    # ── Access control ────────────────────────────────────────────────────
+    can, reason = billing_svc.can_export_batch(user, "standard", n_files)
+    if not can:
+        if reason == "login_required":
+            return JSONResponse({"error": "Login required to export.", "code": "E501"}, status_code=401)
+        if reason == "insufficient_credits":
+            cost = n_files * billing_svc.EXPORT_COSTS.get("standard", 1)
+            return JSONResponse(
+                {"error": f"Insufficient credits. {n_files} file(s) require {cost} credit(s).", "code": "E502"},
+                status_code=402,
+            )
+        return JSONResponse({"error": "No active plan. Please visit Pricing to get started.", "code": "E503"}, status_code=403)
+
+    # ── Process each file ─────────────────────────────────────────────────
+    batch_id          = services.new_job_id()
+    successes:        list[tuple[str, str]] = []   # (tiff_path, safe_zip_entry_name)
+    failures:         list[str]             = []   # original filenames (any reason)
+    malware_detected: bool                  = False
+
+    for uf in valid_files:
+        fname  = uf.filename or "upload"
+        job_id = services.new_job_id()
+        try:
+            data = await uf.read()
+
+            # Per-file size limit
+            if len(data) > _BATCH_MAX_FILE_MB * 1024 * 1024:
+                log.warning("[batch %s][%s] file exceeds %dMB limit, skipped", batch_id, fname, _BATCH_MAX_FILE_MB)
+                failures.append(fname)
+                continue
+
+            upload_path = services.save_upload(data, fname, job_id)
+
+            try:
+                is_clean, _ = scan_file(upload_path)
+            except Exception as scan_exc:
+                log.error("[batch %s][%s] AV scan error: %s — treating as unsafe", batch_id, fname, scan_exc)
+                is_clean = False
+
+            if not is_clean:
+                malware_detected = True
+                failures.append(fname)
+                upload_path.unlink(missing_ok=True)
+                continue
+
+            output_path, _, _, _ = services.run_pipeline(
+                upload_path, mode, job_id, lite_mode=lite_mode,
+            )
+            successes.append((output_path, _sanitize_zip_entry(fname)))
+
+        except Exception as exc:
+            import re as _re
+            code_match = _re.search(r"\b(E\d{3})\b", str(exc))
+            err_code   = code_match.group(1) if code_match else "E999"
+            log.error("[batch %s][%s] pipeline error %s: %s", batch_id, fname, err_code, exc, exc_info=True)
+            failures.append(fname)
+
+    if not successes:
+        return JSONResponse(
+            {"error": "All files failed to process. Please try again.", "code": "E230"},
+            status_code=500,
+        )
+
+    # ── Consume credits in one transaction (successful files only) ────────
+    if user and user.plan_type == "creator":
+        n_ok_credits = len(successes)
+        billing_svc.consume_export_credit_bulk(db, user, "standard", n_ok_credits, batch_id)
+
+    # ── Build ZIP in memory ───────────────────────────────────────────────
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED, compresslevel=1) as zf:
+        for tiff_path, entry_name in successes:
+            zf.write(tiff_path, arcname=entry_name)
+    buf.seek(0)
+
+    tiff_paths = [p for p, _ in successes]
+    def _cleanup_tiffs(paths: list[str]) -> None:
+        for p in paths:
+            try:
+                Path(p).unlink(missing_ok=True)
+            except Exception:
+                pass
+    background_tasks.add_task(_cleanup_tiffs, tiff_paths)
+
+    n_ok   = len(successes)
+    n_fail = len(failures)
+    # Safe ASCII filename only
+    filename = f"ele_batch_{n_ok}files.zip"
+    headers  = {
+        "Content-Disposition": f'attachment; filename="{filename}"',
+        "X-Batch-Success":     str(n_ok),
+        "X-Batch-Failed":      str(n_fail),
+        "X-Batch-Malware":     "1" if malware_detected else "0",
+    }
+
+    return StreamingResponse(buf, media_type="application/zip", headers=headers)
+
 
 def _access_denied_response(
     request: Request,

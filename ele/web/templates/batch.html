@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+{% block title %}ele — Batch Processing{% endblock %}
+
+{% block content %}
+
+<div class="hero">
+  <h1 class="hero-title">Batch processing</h1>
+  <p class="lead">Upload up to 10 images at once. Each is processed with the full ele pipeline and delivered in a single ZIP.</p>
+</div>
+
+{% if not user %}
+<div style="text-align:center; padding: 40px 32px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); max-width: 480px; margin: 0 auto;">
+  <p style="font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 8px;">An account is required to use batch processing.</p>
+  <p style="font-size: 13px; color: var(--text-2); margin-bottom: 24px; line-height: 1.65;">
+    Creator credits or a Pro plan are needed to export. No card required to sign up.
+  </p>
+  <div class="lp-cta-row" style="margin-bottom: 0;">
+    <a href="/signup" class="btn btn-primary btn-lg">Sign up free</a>
+    <a href="/login"  class="btn btn-ghost btn-lg">Log in</a>
+  </div>
+</div>
+{% else %}
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loading-text">Processing images&hellip;</div>
+  <div class="loading-sub" id="loading-sub">This may take a moment for multiple files.</div>
+</div>
+
+<!-- Banners (hidden until response) -->
+<div class="alert alert-info"  id="batch-success"  style="display:none;"></div>
+<div class="alert alert-warn"  id="batch-warn"     style="display:none;"></div>
+<div class="alert alert-warn"  id="batch-malware"  style="display:none;">⚠ One or more files were rejected by the malware scan and were not included in the output.</div>
+<div class="alert alert-error" id="batch-error"    style="display:none;"></div>
+
+<form id="batch-form">
+
+  <!-- ── File selection ────────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-title">Images &mdash; up to 10 files</div>
+
+    <div class="dropzone" id="dropzone">
+      <input type="file" name="files" id="file-input"
+             accept=".jpg,.jpeg,.png,.tif,.tiff"
+             multiple required
+             onchange="onFilesChange(this)">
+      <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      <div class="drop-text">Drop images here or click to browse</div>
+      <div class="drop-hint">JPEG &middot; PNG &middot; TIFF &middot; max 10 files</div>
+    </div>
+
+    <div id="file-list" class="batch-file-list" style="display:none;"></div>
+  </div>
+
+  <!-- ── Processing mode ───────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-title">Processing Mode</div>
+
+    <div class="radio-grid">
+      <label class="radio-card checked" id="mode-creator">
+        <input type="radio" name="mode" value="creator" checked onchange="onModeChange(this)">
+        <strong>Creator</strong>
+        <small>Full restoration &middot; 8,000 px</small>
+      </label>
+      <label class="radio-card" id="mode-pro">
+        <input type="radio" name="mode" value="pro" onchange="onModeChange(this)">
+        <strong>Pro</strong>
+        <small>Full resolution &middot; no size limit</small>
+      </label>
+    </div>
+
+    <p id="credit-hint" class="batch-credit-hint"></p>
+  </div>
+
+  <!-- ── Lite mode ─────────────────────────────────────────────────────── -->
+  <div class="card" style="padding: 14px 20px;">
+    <label style="display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none;">
+      <input type="checkbox" name="lite_mode" value="true" id="lite-mode-toggle"
+             style="width:16px; height:16px; accent-color: var(--accent);">
+      <span>
+        <strong>Lite Mode</strong>
+        <small style="display:block; color: var(--text-2);">
+          Minimal tonal adjustment &mdash; for images you plan to heavily edit yourself
+        </small>
+      </span>
+    </label>
+  </div>
+
+  <button type="submit" class="btn btn-primary btn-lg" style="width:100%" id="submit-btn" disabled>
+    Select images to begin
+  </button>
+
+</form>
+
+<script>
+const CREDIT_COST = 1;
+
+{% if user.plan_type == 'creator' %}
+const USER_CREDITS = {{ user.credits }};
+const USER_PLAN    = 'creator';
+{% elif user.plan_type == 'pro' %}
+const USER_CREDITS = null;
+const USER_PLAN    = 'pro';
+{% elif user.plan_type == 'ambassador' %}
+const USER_CREDITS = null;
+const USER_PLAN    = 'ambassador';
+{% else %}
+const USER_CREDITS = 0;
+const USER_PLAN    = 'free';
+{% endif %}
+
+let selectedCount = 0;
+let processingActive = false;
+
+window.addEventListener('beforeunload', e => {
+  if (processingActive) {
+    e.preventDefault();
+    e.returnValue = 'Batch processing is in progress. Leaving now may cause you to miss the download.';
+  }
+});
+
+function onFilesChange(input) {
+  const files = Array.from(input.files || []);
+  selectedCount = Math.min(files.length, 10);
+
+  const list = document.getElementById('file-list');
+  if (!selectedCount) {
+    list.style.display = 'none';
+    list.innerHTML     = '';
+    updateSubmitBtn();
+    return;
+  }
+
+  list.innerHTML = files.slice(0, 10).map(f => `
+    <div class="batch-file-row">
+      <span class="batch-file-name">${escHtml(f.name)}</span>
+      <span class="batch-file-size">${formatBytes(f.size)}</span>
+    </div>
+  `).join('');
+
+  if (files.length > 10) {
+    list.innerHTML += `<div class="batch-file-row batch-file-warn">Only the first 10 files will be processed.</div>`;
+  }
+  list.style.display = 'block';
+  updateSubmitBtn();
+}
+
+function onModeChange(radio) {
+  document.querySelectorAll('.radio-card').forEach(c => {
+    if (c.querySelector('input[name="mode"]')) c.classList.remove('checked');
+  });
+  radio.closest('.radio-card').classList.add('checked');
+  updateSubmitBtn();
+}
+
+function updateSubmitBtn() {
+  const btn   = document.getElementById('submit-btn');
+  const hint  = document.getElementById('credit-hint');
+  const n     = selectedCount;
+
+  if (!n) {
+    btn.disabled   = true;
+    btn.textContent = 'Select images to begin';
+    hint.textContent = '';
+    return;
+  }
+
+  if (USER_PLAN === 'creator') {
+    const needed = n * CREDIT_COST;
+    const ok     = USER_CREDITS >= needed;
+    hint.textContent = `${n} file${n>1?'s':''} = ${needed} credit${needed>1?'s':''} · you have ${USER_CREDITS}`;
+    hint.style.color = ok ? 'var(--text-3)' : 'var(--error)';
+    btn.disabled     = !ok;
+    btn.textContent  = ok ? `Process ${n} image${n>1?'s':''}` : 'Insufficient credits';
+  } else if (USER_PLAN === 'pro' || USER_PLAN === 'ambassador') {
+    hint.textContent = `${n} file${n>1?'s':''} · unlimited`;
+    hint.style.color = 'var(--text-3)';
+    btn.disabled     = false;
+    btn.textContent  = `Process ${n} image${n>1?'s':''}`;
+  } else {
+    hint.textContent = 'An active plan is required to export.';
+    hint.style.color = 'var(--error)';
+    btn.disabled     = true;
+    btn.textContent  = 'No active plan';
+  }
+}
+
+document.getElementById('batch-form').addEventListener('submit', async e => {
+  e.preventDefault();
+
+  const fileInput = document.getElementById('file-input');
+  if (!fileInput.files || !fileInput.files.length) return;
+
+  const n = Math.min(fileInput.files.length, 10);
+  processingActive = true;
+  setLoading(true, `Processing ${n} image${n>1?'s':''}…`);
+  hideAlerts();
+
+  const fd = new FormData(document.getElementById('batch-form'));
+  // Limit to 10 files: rebuild files list
+  const dt = new DataTransfer();
+  Array.from(fileInput.files).slice(0, 10).forEach(f => dt.items.add(f));
+  fd.delete('files');
+  Array.from(dt.files).forEach(f => fd.append('files', f));
+
+  try {
+    const resp = await fetch('/upload_batch', { method: 'POST', body: fd });
+
+    if (resp.ok) {
+      const nOk      = parseInt(resp.headers.get('X-Batch-Success') || '0');
+      const nFail    = parseInt(resp.headers.get('X-Batch-Failed')  || '0');
+      const malware  = resp.headers.get('X-Batch-Malware') === '1';
+
+      const blob = await resp.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `ele_batch_${nOk}files.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      processingActive = false;
+      setLoading(false);
+
+      const successEl = document.getElementById('batch-success');
+      successEl.textContent = `✓ ${nOk} file${nOk>1?'s':''} processed. Download started.`;
+      successEl.style.display = 'block';
+
+      if (malware) {
+        document.getElementById('batch-malware').style.display = 'block';
+      }
+
+      if (nFail > 0 && !malware) {
+        const warnEl = document.getElementById('batch-warn');
+        warnEl.textContent = `${nFail} file${nFail>1?'s':''} could not be processed and were skipped.`;
+        warnEl.style.display = 'block';
+      } else if (nFail > 0 && malware) {
+        const warnEl = document.getElementById('batch-warn');
+        warnEl.textContent = `${nFail} file${nFail>1?'s':''} total were skipped (including malware rejections).`;
+        warnEl.style.display = 'block';
+      }
+
+      // Reset form
+      document.getElementById('file-input').value = '';
+      document.getElementById('file-list').style.display = 'none';
+      selectedCount = 0;
+      updateSubmitBtn();
+
+    } else {
+      const data = await resp.json().catch(() => ({ error: 'Unknown error', code: 'E999' }));
+      processingActive = false;
+      setLoading(false);
+      const errEl = document.getElementById('batch-error');
+      errEl.innerHTML = `${escHtml(data.error || 'Processing failed.')}<br><code style="font-size:11px">${data.code || 'E999'}</code>`;
+      errEl.style.display = 'block';
+    }
+
+  } catch (err) {
+    processingActive = false;
+    setLoading(false);
+    const errEl = document.getElementById('batch-error');
+    errEl.innerHTML = `Network error — please try again.<br><code style="font-size:11px">E100</code>`;
+    errEl.style.display = 'block';
+  }
+});
+
+// Drag-and-drop
+const dz = document.getElementById('dropzone');
+if (dz) {
+  dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', ()  => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop',      e => {
+    e.preventDefault();
+    dz.classList.remove('drag-over');
+    const fi = document.getElementById('file-input');
+    fi.files = e.dataTransfer.files;
+    onFilesChange(fi);
+  });
+}
+
+function setLoading(active, text) {
+  const el = document.getElementById('loading');
+  if (active) {
+    document.getElementById('loading-text').textContent = text || 'Processing…';
+    el.classList.add('active');
+  } else {
+    el.classList.remove('active');
+  }
+}
+
+function hideAlerts() {
+  ['batch-success', 'batch-warn', 'batch-malware', 'batch-error'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+}
+
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1024 * 1024) return (b / 1024).toFixed(0) + ' KB';
+  return (b / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+
+{% endif %}
+{% endblock %}

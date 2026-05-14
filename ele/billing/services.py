@@ -24,6 +24,26 @@ _ACTIVE_SUB_STATUSES = {"active", "trialing"}
 # Access control
 # ---------------------------------------------------------------------------
 
+def can_export_batch(
+    user: User | None,
+    export_kind: str,
+    n_files: int,
+) -> tuple[bool, str | None]:
+    """Check whether a user can export a batch of n_files at once."""
+    if user is None:
+        return False, "login_required"
+    if user.plan_type == "ambassador":
+        return True, None
+    if user.plan_type == "pro" and user.subscription_status in _ACTIVE_SUB_STATUSES:
+        return True, None
+    if user.plan_type == "creator":
+        cost = EXPORT_COSTS.get(export_kind, 1) * n_files
+        if user.credits >= cost:
+            return True, None
+        return False, "insufficient_credits"
+    return False, "no_plan"
+
+
 def can_export(user: User | None, export_kind: str) -> tuple[bool, str | None]:
     """Check whether a user is allowed to perform an export.
 
@@ -77,6 +97,29 @@ def consume_export_credit(
         delta=-cost,
         reason=f"{export_kind}_export",
         metadata_json=json.dumps({"job_id": job_id}) if job_id else None,
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(user)
+
+
+def consume_export_credit_bulk(
+    db: Session,
+    user: User,
+    export_kind: str,
+    n_files: int,
+    batch_id: str = "",
+) -> None:
+    """Deduct credits for a batch of n_files in a single transaction."""
+    if user.plan_type != "creator":
+        return
+    cost = EXPORT_COSTS.get(export_kind, 1) * n_files
+    user.credits -= cost
+    entry = CreditLedger(
+        user_id=user.id,
+        delta=-cost,
+        reason=f"batch_{export_kind}_export",
+        metadata_json=json.dumps({"batch_id": batch_id, "n_files": n_files}) if batch_id else None,
     )
     db.add(entry)
     db.commit()
