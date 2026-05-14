@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Processing History — ele{% endblock %}
+
+{% block content %}
+
+<div class="hero">
+  <h1 class="hero-title">Processing History</h1>
+  <p class="hero-sub">Files are available for re-download for 48 hours after processing.</p>
+</div>
+
+{% if not jobs %}
+<div class="card" style="text-align:center; padding:48px 24px;">
+  <p style="color:var(--text-2); font-size:15px; margin:0;">No processing history yet.</p>
+  <a href="/" class="btn btn-primary" style="display:inline-block; margin-top:20px;">Process your first photo</a>
+</div>
+
+{% else %}
+<div class="card" style="padding:0; overflow:hidden;">
+  <table class="history-table">
+    <thead>
+      <tr>
+        <th>File</th>
+        <th>Mode</th>
+        <th>Processed</th>
+        <th>Expires</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for job in jobs %}
+      <tr class="{{ 'history-row-expired' if not job.available else '' }}">
+        <td class="history-filename">
+          {{ job.original_filename | truncate(40, True, '…') }}
+        </td>
+        <td>
+          <span class="history-mode-badge history-mode-{{ job.mode }}">{{ job.mode }}</span>
+        </td>
+        <td class="history-date">
+          {{ job.created_at.strftime('%Y-%m-%d %H:%M') }} UTC
+        </td>
+        <td class="history-date">
+          {% if job.available %}
+            <span style="color:var(--success);">expires in {{ job.hrs_left }}h</span>
+          {% else %}
+            <span style="color:var(--text-2);">Expired</span>
+          {% endif %}
+        </td>
+        <td class="history-action">
+          {% if job.available %}
+            <a href="/redownload/{{ job.job_id }}" class="btn btn-sm">Download</a>
+          {% else %}
+            <span class="btn btn-sm btn-disabled" aria-disabled="true">Expired</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% endblock %}

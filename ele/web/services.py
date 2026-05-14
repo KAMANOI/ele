@@ -91,6 +91,23 @@ def cleanup_old_uploads(max_age_hours: int = 24) -> None:
                 log.warning("Failed to clean up upload %s: %s", f.name, exc)
 
 
+def cleanup_old_outputs(max_age_hours: int = 50) -> None:
+    """Delete output TIFF files older than max_age_hours.
+
+    Uses 50h (2h buffer beyond the 48h DB expires_at) to prevent premature deletion
+    caused by filesystem mtime precision.
+    """
+    import time
+    cutoff = time.time() - max_age_hours * 3600
+    for f in OUTPUTS_DIR.glob("*"):
+        if f.is_file() and f.stat().st_mtime < cutoff:
+            try:
+                f.unlink()
+                log.info("Cleaned up old output: %s", f.name)
+            except Exception as exc:
+                log.warning("Failed to clean up output %s: %s", f.name, exc)
+
+
 # ---------------------------------------------------------------------------
 # Job state
 # ---------------------------------------------------------------------------

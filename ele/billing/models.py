@@ -79,3 +79,19 @@ class CheckoutSessionLog(Base):
     discount_code_entered: Mapped[str | None] = mapped_column(String(64),  nullable=True)
     status:                Mapped[str]        = mapped_column(String(32),  default="pending", nullable=False)
     created_at:            Mapped[datetime]   = mapped_column(DateTime,    server_default=func.now())
+
+
+class ProcessingJob(Base):
+    __tablename__ = "processing_jobs"
+
+    id:                Mapped[int]      = mapped_column(Integer,     primary_key=True, index=True)
+    job_id:            Mapped[str]      = mapped_column(String(64),  unique=True, index=True, nullable=False)
+    user_id:           Mapped[int]      = mapped_column(Integer,     ForeignKey("users.id"), nullable=False, index=True)
+    original_filename: Mapped[str]      = mapped_column(String(255), nullable=False)
+    dl_filename:       Mapped[str]      = mapped_column(String(255), nullable=False)
+    mode:              Mapped[str]      = mapped_column(String(32),  nullable=False)
+    output_path:       Mapped[str]      = mapped_column(String(512), nullable=False)
+    expires_at:        Mapped[datetime] = mapped_column(DateTime,    nullable=False)
+    created_at:        Mapped[datetime] = mapped_column(DateTime,    server_default=func.now())
+
+    user: Mapped[User] = relationship("User")

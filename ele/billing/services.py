@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
-from ele.billing.models import CreditLedger, User
+from ele.billing.models import CreditLedger, ProcessingJob, User
+
+_JOB_RETENTION_HOURS = 48
 
 # Credits consumed per export kind
 EXPORT_COSTS: dict[str, int] = {
@@ -175,3 +178,45 @@ def get_recent_ledger(db: Session, user: User, limit: int = 20) -> list[CreditLe
         .limit(limit)
         .all()
     )
+
+
+# ---------------------------------------------------------------------------
+# Processing job history
+# ---------------------------------------------------------------------------
+
+def record_processing_job(
+    db: Session,
+    user: User,
+    job_id: str,
+    original_filename: str,
+    dl_filename: str,
+    mode: str,
+    output_path: str,
+) -> None:
+    now = datetime.now(timezone.utc)
+    job = ProcessingJob(
+        job_id=job_id,
+        user_id=user.id,
+        original_filename=original_filename,
+        dl_filename=dl_filename,
+        mode=mode,
+        output_path=output_path,
+        expires_at=now + timedelta(hours=_JOB_RETENTION_HOURS),
+    )
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+
+
+def get_recent_jobs(db: Session, user: User, limit: int = 30) -> list[ProcessingJob]:
+    return (
+        db.query(ProcessingJob)
+        .filter(ProcessingJob.user_id == user.id)
+        .order_by(ProcessingJob.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+
+def get_job_by_job_id(db: Session, job_id: str) -> ProcessingJob | None:
+    return db.query(ProcessingJob).filter(ProcessingJob.job_id == job_id).first()

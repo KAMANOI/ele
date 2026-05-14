@@ -22,6 +22,7 @@
       <a href="/guide" class="nav-link">{{ 'ガイド' if is_ja else 'Guide' }}</a>
       {% if user %}
         <a href="/batch" class="nav-link">{{ 'バッチ' if is_ja else 'Batch' }}</a>
+        <a href="/history" class="nav-link">{{ '履歴' if is_ja else 'History' }}</a>
       {% endif %}
       {% if is_ja %}
         <a href="/" class="nav-link nav-lang">EN</a>

@@ -6,10 +6,11 @@ import io
 import logging
 import re
 import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -111,6 +112,7 @@ async def upload(
 
     services.ensure_storage()
     services.cleanup_old_uploads()
+    services.cleanup_old_outputs()
     user = get_current_user_from_session(request, db)
 
     # ── Validate extension ────────────────────────────────────────────────
@@ -262,6 +264,15 @@ async def upload(
         pass
 
     services.save_job_state(job_id, state)
+
+    # Record in history DB (after state is complete so dl_filename is accurate)
+    if user:
+        billing_svc.record_processing_job(
+            db, user, job_id, fname,
+            dl_filename=services.download_filename(state),
+            mode=mode,
+            output_path=output_path,
+        )
 
     if flow == "preview":
         return RedirectResponse(f"/preview/{job_id}", status_code=303)
@@ -471,6 +482,72 @@ def download(
 
 
 # ---------------------------------------------------------------------------
+# History
+# ---------------------------------------------------------------------------
+
+@router.get("/history", response_class=HTMLResponse)
+def history_page(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
+    user = get_current_user_from_session(request, db)
+    if not user:
+        return RedirectResponse("/login?next=/history", status_code=302)
+    raw_jobs = billing_svc.get_recent_jobs(db, user)
+    now      = datetime.now(timezone.utc)
+    jobs     = []
+    for j in raw_jobs:
+        expires = j.expires_at
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        created = j.created_at
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        is_expired   = expires < now
+        file_exists  = Path(j.output_path).exists() if j.output_path else False
+        available    = not is_expired and file_exists
+        hrs_left     = max(0, int((expires - now).total_seconds() // 3600)) if available else 0
+        jobs.append({
+            "job_id":            j.job_id,
+            "original_filename": j.original_filename,
+            "mode":              j.mode,
+            "created_at":        created,
+            "expires_at":        expires,
+            "available":         available,
+            "hrs_left":          hrs_left,
+        })
+    ctx         = _base_ctx(request, db)
+    ctx["jobs"] = jobs
+    return _render(request, "history.html", ctx)
+
+
+@router.get("/redownload/{job_id}", response_model=None)
+def redownload(
+    request: Request,
+    job_id:  str,
+    db:      Session = Depends(get_db),
+) -> FileResponse | RedirectResponse:
+    user = get_current_user_from_session(request, db)
+    if not user:
+        return RedirectResponse(f"/login?next=/redownload/{job_id}", status_code=302)
+
+    job = billing_svc.get_job_by_job_id(db, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    if job.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Access denied.")
+
+    expires_at = job.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=410, detail="File expired.")
+
+    out = job.output_path
+    if not out or not Path(out).exists():
+        raise HTTPException(status_code=404, detail="Output file not found or expired.")
+
+    return FileResponse(path=out, media_type="image/tiff", filename=job.dl_filename)
+
+
+# ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
 
@@ -497,16 +574,16 @@ def batch_page(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
 
 @router.post("/upload_batch", response_model=None)
 async def upload_batch(
-    request:          Request,
-    files:            Annotated[List[UploadFile], File()],
-    mode:             Annotated[str, Form()] = "creator",
-    lite_mode:        Annotated[bool, Form()] = False,
-    background_tasks: BackgroundTasks = BackgroundTasks(),
-    db:               Session = Depends(get_db),
+    request:   Request,
+    files:     Annotated[List[UploadFile], File()],
+    mode:      Annotated[str, Form()] = "creator",
+    lite_mode: Annotated[bool, Form()] = False,
+    db:        Session = Depends(get_db),
 ) -> StreamingResponse | JSONResponse:
 
     services.ensure_storage()
     services.cleanup_old_uploads()
+    services.cleanup_old_outputs()
     user = get_current_user_from_session(request, db)
 
     # ── Validate mode ─────────────────────────────────────────────────────
@@ -542,9 +619,9 @@ async def upload_batch(
 
     # ── Process each file ─────────────────────────────────────────────────
     batch_id          = services.new_job_id()
-    successes:        list[tuple[str, str]] = []   # (tiff_path, safe_zip_entry_name)
-    failures:         list[str]             = []   # original filenames (any reason)
-    malware_detected: bool                  = False
+    successes:        list[tuple[str, str, str, str]] = []   # (tiff_path, zip_entry, job_id, orig_fname)
+    failures:         list[str]                       = []   # original filenames (any reason)
+    malware_detected: bool                            = False
 
     for uf in valid_files:
         fname  = uf.filename or "upload"
@@ -572,10 +649,10 @@ async def upload_batch(
                 upload_path.unlink(missing_ok=True)
                 continue
 
-            output_path, _, _, _ = services.run_pipeline(
+            batch_out, _, _, _ = services.run_pipeline(
                 upload_path, mode, job_id, lite_mode=lite_mode,
             )
-            successes.append((output_path, _sanitize_zip_entry(fname)))
+            successes.append((batch_out, _sanitize_zip_entry(fname), job_id, fname))
 
         except Exception as exc:
             import re as _re
@@ -595,21 +672,23 @@ async def upload_batch(
         n_ok_credits = len(successes)
         billing_svc.consume_export_credit_bulk(db, user, "standard", n_ok_credits, batch_id)
 
+    # ── Record each job in history (files kept 48 h for re-download) ──────
+    if user:
+        for tiff_path, _, file_job_id, file_fname in successes:
+            dl_name = f"{Path(file_fname).stem}_ele.tiff"
+            billing_svc.record_processing_job(
+                db, user, file_job_id, file_fname,
+                dl_filename=dl_name,
+                mode=mode,
+                output_path=tiff_path,
+            )
+
     # ── Build ZIP in memory ───────────────────────────────────────────────
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED, compresslevel=1) as zf:
-        for tiff_path, entry_name in successes:
+        for tiff_path, entry_name, _, _ in successes:
             zf.write(tiff_path, arcname=entry_name)
     buf.seek(0)
-
-    tiff_paths = [p for p, _ in successes]
-    def _cleanup_tiffs(paths: list[str]) -> None:
-        for p in paths:
-            try:
-                Path(p).unlink(missing_ok=True)
-            except Exception:
-                pass
-    background_tasks.add_task(_cleanup_tiffs, tiff_paths)
 
     n_ok   = len(successes)
     n_fail = len(failures)
