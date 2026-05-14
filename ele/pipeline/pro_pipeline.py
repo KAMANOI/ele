@@ -27,17 +27,21 @@ def run_pro_pipeline(
     output_path: str,
     scale: int | None = None,
     lite_mode: bool = False,
+    highlight_strength: float = 1.0,
+    shadow_strength: float = 1.0,
     _progress_cb=None,
 ) -> PipelineResult:
     """Run the pro-tier pipeline.
 
     Args:
-        input_path:   Path to input JPEG / PNG / TIFF.
-        output_path:  Destination path.  .tiff/.tif → 16-bit TIFF.
-                      .dng → raises NotImplementedError (planned).
-        scale:        Ignored in pro mode.
-        lite_mode:    If True, skip shoulder/chroma steps for lighter processing.
-        _progress_cb: Optional callable(step: int, label: str).
+        input_path:         Path to input JPEG / PNG / TIFF.
+        output_path:        Destination path.  .tiff/.tif → 16-bit TIFF.
+                            .dng → raises NotImplementedError (planned).
+        scale:              Ignored in pro mode.
+        lite_mode:          If True, skip shoulder/chroma steps for lighter processing.
+        highlight_strength: Highlight compression multiplier (0.0–1.5).
+        shadow_strength:    Shadow lift multiplier (0.0–1.5).
+        _progress_cb:       Optional callable(step: int, label: str).
 
     Returns:
         PipelineResult.
@@ -60,7 +64,8 @@ def run_pro_pipeline(
     image, scene_map = reconstruct_scene(image)
 
     cb(5, "pseudo-RAW reconstruction")
-    image = reconstruct_pseudo_raw(image, report, scene_map, lite_mode=lite_mode)
+    image = reconstruct_pseudo_raw(image, report, scene_map, lite_mode=lite_mode,
+                                   highlight_strength=highlight_strength, shadow_strength=shadow_strength)
 
     cb(6, "exporting")
     metadata = build_metadata("pro", input_path, report, image)

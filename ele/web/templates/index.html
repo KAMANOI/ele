@@ -379,11 +379,39 @@
       </div>
     </div>
 
+    <!-- ── Tone controls ─────────────────────────────────────────────── -->
+    <div class="card" id="tone-controls-card">
+      <div class="card-title">Tone Controls</div>
+
+      <div class="tone-slider-row">
+        <label class="tone-label">Highlights</label>
+        <input type="range" name="highlight_strength_pct" id="hl-slider"
+               min="0" max="150" step="5" value="100"
+               oninput="onStrengthChange()" class="tone-slider">
+        <span class="tone-val" id="hl-val">100%</span>
+      </div>
+      <div class="tone-slider-desc">Higher = stronger highlight recovery. Lower = more natural sky and window rendering. &nbsp;<span style="color:var(--text-3)">100% = default</span></div>
+
+      <div class="tone-slider-row" style="margin-top: 14px;">
+        <label class="tone-label">Shadows</label>
+        <input type="range" name="shadow_strength_pct" id="sh-slider"
+               min="0" max="150" step="5" value="100"
+               oninput="onStrengthChange()" class="tone-slider">
+        <span class="tone-val" id="sh-val">100%</span>
+      </div>
+      <div class="tone-slider-desc">Higher = deeper shadow lift. Lower = preserve the original dark tones. &nbsp;<span style="color:var(--text-3)">100% = default</span></div>
+
+      <!-- Hidden float fields sent to server -->
+      <input type="hidden" name="highlight_strength" id="hl-strength-val" value="1.0">
+      <input type="hidden" name="shadow_strength"    id="sh-strength-val" value="1.0">
+    </div>
+
     <!-- ── Lite mode ────────────────────────────────────────────────────── -->
     <div class="card" style="padding: 14px 20px;" id="lite-mode-card">
       <label style="display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none;">
         <input type="checkbox" name="lite_mode" value="true" id="lite-mode-toggle"
-               style="width:16px; height:16px; accent-color: var(--accent);">
+               style="width:16px; height:16px; accent-color: var(--accent);"
+               onchange="updateToneControlsVisibility()">
         <span>
           <strong>Lite Mode</strong>
           <small style="display:block; color: var(--text-2);">
@@ -417,15 +445,47 @@ function onModeChange(radio) {
     radio.value === 'print' ? 'block' : 'none';
   document.getElementById('print-plus-tier-group').style.display =
     radio.value === 'print_plus' ? 'block' : 'none';
+  const isPrintPlus = radio.value === 'print_plus';
   const liteCard = document.getElementById('lite-mode-card');
   if (liteCard) {
-    liteCard.style.display = radio.value === 'print_plus' ? 'none' : '';
-    if (radio.value === 'print_plus') {
+    liteCard.style.display = isPrintPlus ? 'none' : '';
+    if (isPrintPlus) {
       const cb = document.getElementById('lite-mode-toggle');
       if (cb) cb.checked = false;
     }
   }
+  updateToneControlsVisibility();
 }
+
+function onStrengthChange() {
+  const hlPct = parseInt(document.getElementById('hl-slider').value);
+  const shPct = parseInt(document.getElementById('sh-slider').value);
+  document.getElementById('hl-val').textContent = hlPct + '%';
+  document.getElementById('sh-val').textContent = shPct + '%';
+  document.getElementById('hl-strength-val').value = (hlPct / 100).toFixed(2);
+  document.getElementById('sh-strength-val').value = (shPct / 100).toFixed(2);
+}
+
+function updateToneControlsVisibility() {
+  const toneCard = document.getElementById('tone-controls-card');
+  if (!toneCard) return;
+  const modeRadio = document.querySelector('input[name="mode"]:checked');
+  const liteToggle = document.getElementById('lite-mode-toggle');
+  const isPrintPlus = modeRadio && modeRadio.value === 'print_plus';
+  const isLite = liteToggle && liteToggle.checked;
+  const hide = isPrintPlus || isLite;
+  toneCard.style.display = hide ? 'none' : '';
+  // Reset sliders to 100% when hidden so hidden fields don't carry stale values
+  if (hide) {
+    const hl = document.getElementById('hl-slider');
+    const sh = document.getElementById('sh-slider');
+    if (hl) hl.value = 100;
+    if (sh) sh.value = 100;
+    onStrengthChange();
+  }
+}
+
+document.addEventListener('DOMContentLoaded', onStrengthChange);
 
 function onFlowChange(radio) {
   document.querySelectorAll('.radio-card').forEach(c => {

@@ -619,6 +619,46 @@ select:focus {
 
 .nav-signup { padding: 5px 13px; font-size: 12px; border-radius: 6px; }
 
+/* ── Tone controls ───────────────────────────────────────────────────────── */
+
+.tone-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tone-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  min-width: 82px;
+  letter-spacing: .01em;
+}
+
+.tone-slider {
+  flex: 1;
+  height: 4px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.tone-val {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  min-width: 38px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.tone-slider-desc {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 5px;
+  margin-left: 94px;
+  line-height: 1.5;
+}
+
 /* ── Batch page ──────────────────────────────────────────────────────────── */
 
 .batch-file-list {

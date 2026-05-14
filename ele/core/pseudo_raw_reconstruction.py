@@ -86,6 +86,8 @@ def reconstruct_pseudo_raw(
     report: DegradationReport,
     scene_map: SceneMap,
     lite_mode: bool = False,
+    highlight_strength: float = 1.0,
+    shadow_strength: float = 1.0,
 ) -> np.ndarray:
     """Convert a scene-referred image into a pseudo-RAW editable master.
 
@@ -118,13 +120,21 @@ def reconstruct_pseudo_raw(
         image:     H×W×3 float32, linear RGB, values in [0, 1].
         report:    DegradationReport from Stage 1.
         scene_map: SceneMap from Stage 3.
-        lite_mode: If True, skip tonal reshaping (shoulder, chroma expansion) and
-                   reduce shadow lift — preserves the scene's original contrast
-                   for images destined for heavy manual RAW editing.
+        lite_mode:          If True, skip tonal reshaping (shoulder, chroma expansion) and
+                            reduce shadow lift — preserves the scene's original contrast
+                            for images destined for heavy manual RAW editing.
+        highlight_strength: Multiplier for highlight compression (0.0 = none, 1.0 = default, 1.5 = max).
+                            Ignored when lite_mode is True.
+        shadow_strength:    Multiplier for shadow lift (0.0 = none, 1.0 = default, 1.5 = max).
+                            In lite_mode the effective multiplier is halved before this is applied.
 
     Returns:
         H×W×3 float32, pseudo-RAW master, values in [0, 1].
     """
+    # Clamp strength values to valid range
+    hl_str = max(0.0, min(1.5, float(highlight_strength)))
+    sh_str = max(0.0, min(1.5, float(shadow_strength)))
+
     if lite_mode:
         logger.info("reconstruct_pseudo_raw: lite_mode=True — shoulder/chroma steps skipped")
     img = image.astype(np.float32)
@@ -144,15 +154,19 @@ def reconstruct_pseudo_raw(
     #    space so each stop of recovery is perceptually uniform — avoids the
     #    patchiness that linear additive lifting introduces in mid-shadows.
     logger.info("Log-luminance reconstruction applied")
-    Y   = _compute_luminance(img)
+    Y = _compute_luminance(img)
     if lite_mode:
         Y = _apply_log_tonal_reconstruction(
             Y,
-            shadow_lift=_LOG_SHADOW_LIFT * 0.5,
-            hl_compress=_LOG_HL_COMPRESS * 0.5,
+            shadow_lift=_LOG_SHADOW_LIFT * 0.5 * sh_str,
+            hl_compress=_LOG_HL_COMPRESS * 0.5 * hl_str,
         )
     else:
-        Y = _apply_log_tonal_reconstruction(Y)
+        Y = _apply_log_tonal_reconstruction(
+            Y,
+            shadow_lift=_LOG_SHADOW_LIFT * sh_str,
+            hl_compress=_LOG_HL_COMPRESS * hl_str,
+        )
     img = _recombine_luma_chroma(img, Y)
 
     if not lite_mode:

@@ -97,14 +97,16 @@ def index_ja(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
 @router.post("/upload", response_model=None)
 async def upload(
     request:          Request,
-    file:             Annotated[UploadFile, File()],
-    mode:             Annotated[str, Form()] = "creator",
-    flow:             Annotated[str, Form()] = "quick",
-    print_scale:      Annotated[Optional[int], Form()] = None,
-    print_style:      Annotated[str, Form()] = "natural",
-    print_plus_tier:  Annotated[str, Form()] = "quality",
-    lite_mode:        Annotated[bool, Form()] = False,
-    db:               Session = Depends(get_db),
+    file:               Annotated[UploadFile, File()],
+    mode:               Annotated[str, Form()] = "creator",
+    flow:               Annotated[str, Form()] = "quick",
+    print_scale:        Annotated[Optional[int], Form()] = None,
+    print_style:        Annotated[str, Form()] = "natural",
+    print_plus_tier:    Annotated[str, Form()] = "quality",
+    lite_mode:          Annotated[bool, Form()] = False,
+    highlight_strength: Annotated[float, Form()] = 1.0,
+    shadow_strength:    Annotated[float, Form()] = 1.0,
+    db:                 Session = Depends(get_db),
 ) -> RedirectResponse | HTMLResponse:
 
     services.ensure_storage()
@@ -133,6 +135,10 @@ async def upload(
         ctx = _base_ctx(request, db)
         ctx["error"] = f"Unknown Print+ tier: {print_plus_tier!r}."
         return _render(request, "index.html", ctx, status_code=400)
+
+    # Clamp tone strength values to valid range (0.0–1.5)
+    highlight_strength = max(0.0, min(1.5, highlight_strength))
+    shadow_strength    = max(0.0, min(1.5, shadow_strength))
 
     # ── Access control ────────────────────────────────────────────────────
     if mode == "print":
@@ -171,6 +177,8 @@ async def upload(
             print_style=print_style if mode == "print" else "natural",
             print_plus_tier=print_plus_tier if mode == "print_plus" else "quality",
             lite_mode=lite_mode,
+            highlight_strength=highlight_strength,
+            shadow_strength=shadow_strength,
         )
     except Exception as exc:
         log.error("[%s] Pipeline error: %s", job_id, exc, exc_info=True)
