@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ 'ja' if request.url.path == '/ja' else 'en' }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,29 +11,35 @@
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
+{% set is_ja = request.url.path == '/ja' %}
 
 <header class="site-header">
   <div class="container header-inner">
     <a href="/" class="logo">ele</a>
     <span class="tagline">pseudo-RAW preprocessing</span>
     <nav class="site-nav">
-      <a href="/pricing" class="nav-link">Pricing</a>
-      <a href="/guide" class="nav-link">Guide</a>
+      <a href="/pricing" class="nav-link">{{ '料金' if is_ja else 'Pricing' }}</a>
+      <a href="/guide" class="nav-link">{{ 'ガイド' if is_ja else 'Guide' }}</a>
+      {% if is_ja %}
+        <a href="/" class="nav-link nav-lang">EN</a>
+      {% else %}
+        <a href="/ja" class="nav-link nav-lang">JA</a>
+      {% endif %}
       {% if user %}
         {% if user.plan_type == "creator" %}
-          <span class="nav-badge nav-badge-credits">{{ user.credits }} credits</span>
+          <span class="nav-badge nav-badge-credits">{{ user.credits }} {{ 'cr' if is_ja else 'credits' }}</span>
         {% elif user.plan_type == "pro" %}
           <span class="nav-badge nav-badge-pro">Pro</span>
         {% elif user.plan_type == "ambassador" %}
           <span class="nav-badge nav-badge-ambassador">Ambassador</span>
         {% endif %}
-        <a href="/account" class="nav-link">Account</a>
+        <a href="/account" class="nav-link">{{ 'アカウント' if is_ja else 'Account' }}</a>
         <form action="/logout" method="post" style="display:inline;">
-          <button type="submit" class="nav-link nav-btn-logout">Log out</button>
+          <button type="submit" class="nav-link nav-btn-logout">{{ 'ログアウト' if is_ja else 'Log out' }}</button>
         </form>
       {% else %}
-        <a href="/login" class="nav-link">Log in</a>
-        <a href="/signup" class="btn btn-primary nav-signup">Sign up</a>
+        <a href="/login" class="nav-link">{{ 'ログイン' if is_ja else 'Log in' }}</a>
+        <a href="/signup" class="btn btn-primary nav-signup">{{ '新規登録' if is_ja else 'Sign up' }}</a>
       {% endif %}
     </nav>
   </div>
@@ -47,13 +53,23 @@
 
 <footer class="site-footer">
   <div class="container">
-    ele &mdash; Outputs are editable masters, not finished images.
-    &nbsp;&middot;&nbsp; Assign ProPhoto RGB on import.
-    &nbsp;&middot;&nbsp; <a href="/pricing">Pricing</a>
-    &nbsp;&middot;&nbsp; <a href="/terms">Terms</a>
-    &nbsp;&middot;&nbsp; <a href="/privacy">Privacy</a>
-    &nbsp;&middot;&nbsp; <a href="/tokushoho">特定商取引法</a>
-    &nbsp;&middot;&nbsp; <a href="/contact">Contact</a>
+    {% if is_ja %}
+      ele &mdash; 出力は編集済み完成品ではなく、編集マスターです。
+      &nbsp;&middot;&nbsp; 読み込み時に ProPhoto RGB を割り当ててください。
+      &nbsp;&middot;&nbsp; <a href="/pricing">料金</a>
+      &nbsp;&middot;&nbsp; <a href="/terms">利用規約</a>
+      &nbsp;&middot;&nbsp; <a href="/privacy">プライバシー</a>
+      &nbsp;&middot;&nbsp; <a href="/tokushoho">特定商取引法</a>
+      &nbsp;&middot;&nbsp; <a href="/contact">お問い合わせ</a>
+    {% else %}
+      ele &mdash; Outputs are editable masters, not finished images.
+      &nbsp;&middot;&nbsp; Assign ProPhoto RGB on import.
+      &nbsp;&middot;&nbsp; <a href="/pricing">Pricing</a>
+      &nbsp;&middot;&nbsp; <a href="/terms">Terms</a>
+      &nbsp;&middot;&nbsp; <a href="/privacy">Privacy</a>
+      &nbsp;&middot;&nbsp; <a href="/tokushoho">特定商取引法</a>
+      &nbsp;&middot;&nbsp; <a href="/contact">Contact</a>
+    {% endif %}
   </div>
 </footer>
 

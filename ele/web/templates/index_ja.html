@@ -1,0 +1,456 @@
+{% extends "base.html" %}
+{% block title %}ele — 編集できる写真マスター{% endblock %}
+
+{% block content %}
+
+<!-- ── Hero ──────────────────────────────────────────────────────────────── -->
+<section class="lp-hero">
+  <div class="lp-eyebrow">Lightroom &middot; Photoshop &middot; Capture One 対応</div>
+
+  <h1 class="lp-hero-title">あなたのJPEGを、<br><em>RAW現像と同じ自由度で。</em></h1>
+
+  <p class="lp-hero-sub">
+    eleは圧縮された写真に、カメラRAWファイルと同等の編集余地を与えます。
+    ハイライトを復元し、シャドウを持ち上げ、Lightroomで完全な非破壊編集ができる
+    16ビットマスターを書き出します。
+  </p>
+
+  <div class="lp-cta-row">
+    {% if user %}
+      <a href="#try" class="btn btn-primary btn-lg">画像を処理する &darr;</a>
+      <a href="/guide" class="btn btn-ghost btn-lg">使い方を見る</a>
+    {% else %}
+      <a href="/signup" class="btn btn-primary btn-lg">無料で始める</a>
+      <a href="/pricing" class="btn btn-ghost btn-lg">料金を見る</a>
+    {% endif %}
+  </div>
+
+  <p style="font-size:12px; color: var(--text-3); margin-bottom: 20px;">
+    プレビューは常に無料 &middot; クレジットは書き出し時のみ消費 &middot; サブスク不要
+  </p>
+
+  <div class="lp-pills">
+    <span class="lp-pill"><span class="lp-pill-check">&#10003;</span> ハイライト復元</span>
+    <span class="lp-pill"><span class="lp-pill-check">&#10003;</span> シャドウ拡張</span>
+    <span class="lp-pill"><span class="lp-pill-check">&#10003;</span> カラーヘッドルーム</span>
+    <span class="lp-pill"><span class="lp-pill-check">&#10003;</span> 16-bit TIFF出力</span>
+    <span class="lp-pill"><span class="lp-pill-check">&#10003;</span> ProPhoto RGB · ICC埋め込み</span>
+  </div>
+</section>
+
+<hr class="lp-divider">
+
+<!-- ── How it works ──────────────────────────────────────────────────────── -->
+<section class="lp-section">
+  <div class="lp-section-label">使い方</div>
+  <h2 class="lp-section-title">アップロードから編集マスターまで、<br>わずか数秒。</h2>
+  <p class="lp-section-sub">
+    プラグイン不要。画像をアップロードして、プロ品質の編集ファイルをダウンロードするだけ。
+    プレビューは常に無料で、クレジットは書き出し時のみ消費されます。
+  </p>
+
+  <div class="lp-steps-grid">
+    <!-- Step 1 -->
+    <div class="lp-step">
+      <div class="lp-step-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+      </div>
+      <div class="lp-step-num">Step 1</div>
+      <div class="lp-step-title">アップロード</div>
+      <div class="lp-step-desc">JPEG・PNG・TIFFをドロップするだけ。スマートフォン写真、AI生成画像、スキャン画像にも対応。</div>
+    </div>
+
+    <div class="lp-step-arrow">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="lp-step">
+      <div class="lp-step-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2"/>
+          <path d="M8 21h8M12 17v4"/>
+          <path d="M7 10l3 3 5-5"/>
+        </svg>
+      </div>
+      <div class="lp-step-num">Step 2</div>
+      <div class="lp-step-title">復元処理</div>
+      <div class="lp-step-desc">eleがトーン域を拡張し、シャドウを持ち上げ、ハイライトを復元し、エディターが使えるカラーレンジを広げます。</div>
+    </div>
+
+    <div class="lp-step-arrow">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="lp-step">
+      <div class="lp-step-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+      </div>
+      <div class="lp-step-num">Step 3</div>
+      <div class="lp-step-title">ダウンロード &amp; 現像</div>
+      <div class="lp-step-desc">16-bit TIFFをLightroomかPhotoshopで開く。シャドウ・ハイライト・カラーがカメラRAWのように動きます。</div>
+    </div>
+  </div>
+</section>
+
+<hr class="lp-divider">
+
+<!-- ── Features ──────────────────────────────────────────────────────────── -->
+<section class="lp-section">
+  <div class="lp-section-label">機能</div>
+  <h2 class="lp-section-title">Lightroomを開く前に、<br>eleがやっておくこと。</h2>
+  <p class="lp-section-sub">
+    eleはエディターではなく、前処理エンジンです。エディターが最高のパフォーマンスを発揮できる下地を整えます。
+  </p>
+
+  <div class="lp-feat-grid">
+
+    <div class="lp-feat-card">
+      <div class="lp-feat-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div class="lp-feat-title">ハイライト復元</div>
+      <div class="lp-feat-desc">白飛びした空や窓もディテールを保持し、Lightroomの「ハイライト」スライダーが実際に機能する素材を残します。</div>
+    </div>
+
+    <div class="lp-feat-card">
+      <div class="lp-feat-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 2a10 10 0 0 1 0 20z"/>
+        </svg>
+      </div>
+      <div class="lp-feat-title">シャドウ拡張</div>
+      <div class="lp-feat-desc">深いシャドウを均一に持ち上げ、線形補正特有のグレーかぶりなしに、暗部のディテールをクリーンに引き出します。</div>
+    </div>
+
+    <div class="lp-feat-card">
+      <div class="lp-feat-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+      </div>
+      <div class="lp-feat-title">ProPhoto RGBカラー</div>
+      <div class="lp-feat-desc">sRGBやAdobe RGBより広い色空間。書き出し時にクリップされる豊かな色を保持し、Lightroomで復元できます。</div>
+    </div>
+
+    <div class="lp-feat-card">
+      <div class="lp-feat-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <circle cx="12" cy="12" r="4"/>
+          <line x1="4.93" y1="4.93" x2="9.17" y2="9.17"/>
+          <line x1="14.83" y1="14.83" x2="19.07" y2="19.07"/>
+          <line x1="14.83" y1="9.17" x2="19.07" y2="4.93"/>
+          <line x1="4.93" y1="19.07" x2="9.17" y2="14.83"/>
+        </svg>
+      </div>
+      <div class="lp-feat-title">カラーヘッドルーム</div>
+      <div class="lp-feat-desc">圧縮されたフラットな色彩をミッドトーンで強調しつつ、肌色や明るい部分が不自然にならないよう保護します。</div>
+    </div>
+
+    <div class="lp-feat-card">
+      <div class="lp-feat-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 3 21 3 21 9"/>
+          <polyline points="9 21 3 21 3 15"/>
+          <line x1="21" y1="3" x2="14" y2="10"/>
+          <line x1="3" y1="21" x2="10" y2="14"/>
+        </svg>
+      </div>
+      <div class="lp-feat-title">プリント超解像</div>
+      <div class="lp-feat-desc">ニューラル超解像で最大6倍に拡大し、大判プリントに対応。Print+ではClarityUpscalerで最高のエッジ鮮明度を実現。</div>
+    </div>
+
+    <div class="lp-feat-card">
+      <div class="lp-feat-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"/>
+          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
+      </div>
+      <div class="lp-feat-title">ライトモード</div>
+      <div class="lp-feat-desc">自分でしっかり現像したい写真家向け。前処理を最小限に抑えたフラットなファイルを書き出し、トーンは自分で解釈できます。</div>
+    </div>
+
+  </div>
+</section>
+
+<hr class="lp-divider">
+
+<!-- ── Modes ─────────────────────────────────────────────────────────────── -->
+<section class="lp-section">
+  <div class="lp-section-label">処理モード</div>
+  <h2 class="lp-section-title">1つのパイプライン、5つの出力目標。</h2>
+  <p class="lp-section-sub">
+    ワークフローに合うモードを選んでください。クレジットは書き出し時のみ消費されます。プレビューは常に無料。
+  </p>
+
+  <div class="lp-modes-grid">
+
+    <div class="lp-mode-card">
+      <div class="lp-mode-name">Basic</div>
+      <div class="lp-mode-badge lp-mode-badge-green">1クレジット</div>
+      <div class="lp-mode-sep"></div>
+      <div class="lp-mode-detail">標準パイプライン<br>最大 4,000 px<br>TIFF出力</div>
+    </div>
+
+    <div class="lp-mode-card lp-mode-featured">
+      <div class="lp-mode-name">Creator</div>
+      <div class="lp-mode-badge">1クレジット</div>
+      <div class="lp-mode-sep"></div>
+      <div class="lp-mode-detail">フル復元処理<br>最大 8,000 px<br>TIFF出力</div>
+    </div>
+
+    <div class="lp-mode-card">
+      <div class="lp-mode-name">Pro</div>
+      <div class="lp-mode-badge">1クレジット</div>
+      <div class="lp-mode-sep"></div>
+      <div class="lp-mode-detail">フル解像度<br>サイズ上限なし<br>TIFF出力</div>
+    </div>
+
+    <div class="lp-mode-card">
+      <div class="lp-mode-name">Print</div>
+      <div class="lp-mode-badge">3クレジット</div>
+      <div class="lp-mode-sep"></div>
+      <div class="lp-mode-detail">超解像拡大<br>&times;2 / &times;4 / &times;6<br>TIFF出力</div>
+    </div>
+
+    <div class="lp-mode-card">
+      <div class="lp-mode-name">Print+</div>
+      <div class="lp-mode-badge">3〜6クレジット</div>
+      <div class="lp-mode-sep"></div>
+      <div class="lp-mode-detail">Clarity Upscaler<br>&times;2 / &times;4 / &times;8<br>最高解像度</div>
+    </div>
+
+  </div>
+
+  <p class="lp-pricing-hint">
+    1回の書き出し ¥50〜 &middot; Proプラン ¥1,200&thinsp;/&thinsp;月（無制限） &middot; <a href="/pricing">料金詳細 &rarr;</a>
+  </p>
+</section>
+
+<hr class="lp-divider">
+
+<!-- ── Upload tool ───────────────────────────────────────────────────────── -->
+<section class="lp-tool" id="try">
+  <div class="lp-tool-header">
+    {% if user %}
+      <div class="lp-tool-title">画像を処理する</div>
+      <div class="lp-tool-sub">画像をアップロードして、16-bit編集マスターをダウンロード。</div>
+    {% else %}
+      <div class="lp-tool-title">無料で始める</div>
+      <div class="lp-tool-sub">書き出しにはアカウントが必要です。プレビューは常に無料。</div>
+    {% endif %}
+  </div>
+
+  {% if error %}
+  <div class="alert alert-error">{{ error }}</div>
+  {% endif %}
+
+  {% if not user %}
+  <div style="text-align:center; padding: 40px 32px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); max-width: 480px; margin: 0 auto;">
+    <p style="font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 8px;">書き出しには無料アカウントが必要です。</p>
+    <p style="font-size: 13px; color: var(--text-2); margin-bottom: 24px; line-height: 1.65;">
+      書き出しにはCreatorクレジット（画像を書き出すための残高）またはProプランが必要です。
+      クレジットカード不要で今すぐ登録できます。
+    </p>
+    <div class="lp-cta-row" style="margin-bottom: 0;">
+      <a href="/signup" class="btn btn-primary btn-lg">無料で登録</a>
+      <a href="/login" class="btn btn-ghost btn-lg">ログイン</a>
+    </div>
+  </div>
+  {% else %}
+
+  <!-- Loading overlay -->
+  <div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+    <div class="loading-text">処理中&hellip;</div>
+    <div class="loading-sub">大きなファイルは少し時間がかかる場合があります。</div>
+  </div>
+
+  <form id="upload-form" action="/upload" method="post" enctype="multipart/form-data"
+        onsubmit="showLoading()">
+
+    <!-- ── File upload ──────────────────────────────────────────────────── -->
+    <div class="card">
+      <div class="card-title">画像</div>
+
+      <div class="dropzone" id="dropzone">
+        <input type="file" name="file" id="file-input"
+               accept=".jpg,.jpeg,.png,.tif,.tiff" required
+               onchange="onFileChange(this)">
+        <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <div class="drop-text">ここにドロップするかクリックして選択</div>
+        <div class="drop-hint">JPEG &middot; PNG &middot; TIFF</div>
+        <div class="file-chosen" id="file-chosen" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- ── Processing mode ────────────────────────────────────────────── -->
+    <div class="card">
+      <div class="card-title">処理モード</div>
+
+      <div class="radio-grid" id="mode-grid">
+        <label class="radio-card" id="mode-free">
+          <input type="radio" name="mode" value="free" onchange="onModeChange(this)">
+          <strong>Basic</strong>
+          <small>標準パイプライン &middot; 4,000 px</small>
+        </label>
+        <label class="radio-card checked" id="mode-creator">
+          <input type="radio" name="mode" value="creator" checked onchange="onModeChange(this)">
+          <strong>Creator</strong>
+          <small>フル復元 &middot; 8,000 px</small>
+        </label>
+        <label class="radio-card" id="mode-pro">
+          <input type="radio" name="mode" value="pro" onchange="onModeChange(this)">
+          <strong>Pro</strong>
+          <small>フル解像度 &middot; サイズ上限なし</small>
+        </label>
+        <label class="radio-card" id="mode-print">
+          <input type="radio" name="mode" value="print" onchange="onModeChange(this)">
+          <strong>Print</strong>
+          <small>超解像 &middot; &times;2 / &times;4 / &times;6</small>
+        </label>
+        <label class="radio-card" id="mode-print-plus">
+          <input type="radio" name="mode" value="print_plus" onchange="onModeChange(this)">
+          <strong>Print+</strong>
+          <small>Clarity Upscaler &middot; &times;2 / &times;4 / &times;8</small>
+        </label>
+      </div>
+
+      <!-- Print scale -->
+      <div class="field-group" id="print-scale-group" style="display:none; margin-top:18px">
+        <label class="field-label">拡大倍率</label>
+        <select name="print_scale">
+          <option value="2">&times;2 &mdash; 解像度2倍</option>
+          <option value="4">&times;4 &mdash; 大判フォーマット</option>
+          <option value="6">&times;6 &mdash; 超大判 / ファインアート</option>
+        </select>
+      </div>
+
+      <!-- Print+ tier -->
+      <div class="field-group" id="print-plus-tier-group" style="display:none; margin-top:18px">
+        <label class="field-label">Print+ ティア</label>
+        <select name="print_plus_tier">
+          <option value="quality">Quality &mdash; &times;2拡大 &middot; 3クレジット &middot; 約15秒</option>
+          <option value="large">Large &mdash; &times;4拡大 &middot; 4クレジット &middot; 約15秒</option>
+          <option value="ultra">Ultra &mdash; &times;8拡大（2パス） &middot; 6クレジット &middot; 約30秒</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- ── Export flow ──────────────────────────────────────────────────── -->
+    <div class="card">
+      <div class="card-title">書き出しフロー</div>
+
+      <div class="radio-grid">
+        <label class="radio-card checked" id="flow-quick">
+          <input type="radio" name="flow" value="quick" checked onchange="onFlowChange(this)">
+          <strong>クイック書き出し</strong>
+          <small>処理後すぐにダウンロード</small>
+        </label>
+        <label class="radio-card" id="flow-preview">
+          <input type="radio" name="flow" value="preview" onchange="onFlowChange(this)">
+          <strong>プレビュー &amp; 選択書き出し</strong>
+          <small>結果を比較して出力先を選択</small>
+        </label>
+      </div>
+    </div>
+
+    <!-- ── Lite mode ────────────────────────────────────────────────────── -->
+    <div class="card" style="padding: 14px 20px;" id="lite-mode-card">
+      <label style="display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none;">
+        <input type="checkbox" name="lite_mode" value="true" id="lite-mode-toggle"
+               style="width:16px; height:16px; accent-color: var(--accent);">
+        <span>
+          <strong>ライトモード</strong>
+          <small style="display:block; color: var(--text-2);">
+            トーン調整を最小限に &mdash; 自分でしっかり現像する方向け
+          </small>
+        </span>
+      </label>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-lg" style="width:100%">画像を処理する</button>
+
+  </form>
+  {% endif %}
+</section>
+
+<script>
+function onFileChange(input) {
+  const chosen = document.getElementById('file-chosen');
+  if (input.files && input.files[0]) {
+    chosen.textContent = '✓ ' + input.files[0].name;
+    chosen.style.display = 'block';
+  }
+}
+
+function onModeChange(radio) {
+  document.querySelectorAll('.radio-card').forEach(c => {
+    if (c.querySelector('input[name="mode"]')) c.classList.remove('checked');
+  });
+  radio.closest('.radio-card').classList.add('checked');
+  document.getElementById('print-scale-group').style.display =
+    radio.value === 'print' ? 'block' : 'none';
+  document.getElementById('print-plus-tier-group').style.display =
+    radio.value === 'print_plus' ? 'block' : 'none';
+  const liteCard = document.getElementById('lite-mode-card');
+  if (liteCard) {
+    liteCard.style.display = radio.value === 'print_plus' ? 'none' : '';
+    if (radio.value === 'print_plus') {
+      const cb = document.getElementById('lite-mode-toggle');
+      if (cb) cb.checked = false;
+    }
+  }
+}
+
+function onFlowChange(radio) {
+  document.querySelectorAll('.radio-card').forEach(c => {
+    if (c.querySelector('input[name="flow"]')) c.classList.remove('checked');
+  });
+  radio.closest('.radio-card').classList.add('checked');
+}
+
+function showLoading() {
+  const el = document.getElementById('loading');
+  if (el) el.classList.add('active');
+}
+
+const dz = document.getElementById('dropzone');
+if (dz) {
+  dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', ()  => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop',      e => {
+    e.preventDefault();
+    dz.classList.remove('drag-over');
+    const fi = document.getElementById('file-input');
+    fi.files = e.dataTransfer.files;
+    onFileChange(fi);
+  });
+}
+</script>
+
+{% endblock %}

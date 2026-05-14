@@ -82,6 +82,11 @@ def index(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
     return _render(request, "index.html", _base_ctx(request, db))
 
 
+@router.get("/ja", response_class=HTMLResponse)
+def index_ja(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
+    return _render(request, "index_ja.html", _base_ctx(request, db))
+
+
 # ---------------------------------------------------------------------------
 # Upload → process → redirect
 # ---------------------------------------------------------------------------
